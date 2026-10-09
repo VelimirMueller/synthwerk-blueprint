@@ -1,0 +1,118 @@
+# Reusable CI for Python repos (uv + ruff + mypy strict + pytest).
+#
+# Inputs
+#   python-version     Python version.                          default: "3.14"
+#   uv-version         uv release.                              default: "0.11.30"
+#   working-directory  Project root (holds pyproject.toml).     default: "."
+#
+# Needs in the caller repo
+#   - pyproject.toml + uv.lock. ruff, mypy and pytest in the dev dependency group.
+#   - ruff.toml (copy configs/python/ruff.toml), [tool.mypy] (configs/python/mypy.toml).
+#
+# Caller permissions: contents: read.
+# Required check: "<caller job id> / required" (use job id "ci" -> "ci / required").
+name: py-ci
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        type: string
+        default: "3.14"
+      uv-version:
+        type: string
+        default: "0.11.30"
+      working-directory:
+        type: string
+        default: "."
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: ${{ inputs.uv-version }}
+          python-version: ${{ inputs.python-version }}
+          working-directory: ${{ inputs.working-directory }}
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: ruff check
+        run: uv run --frozen ruff check .
+      - name: ruff format
+        run: uv run --frozen ruff format --check .
+
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: ${{ inputs.uv-version }}
+          python-version: ${{ inputs.python-version }}
+          working-directory: ${{ inputs.working-directory }}
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: mypy strict
+        run: uv run --frozen mypy
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: ${{ inputs.uv-version }}
+          python-version: ${{ inputs.python-version }}
+          working-directory: ${{ inputs.working-directory }}
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: pytest
+        run: uv run --frozen pytest
+
+  required:
+    if: always()
+    needs: [lint, typecheck, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: All jobs passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: $RESULTS"
+          for result in $RESULTS; do
+            [[ "$result" == "success" ]] || exit 1
+          done

@@ -1,0 +1,158 @@
+# Reusable CI for TypeScript and Vue repos (pnpm + Biome + vue-tsc/tsc + Vitest).
+#
+# Inputs
+#   node-version       Node.js version.                         default: "24"
+#   working-directory  Package root (holds package.json).       default: "."
+#
+# Needs in the caller repo
+#   - package.json with "packageManager": "pnpm@<version>" and a pnpm-lock.yaml.
+#   - @biomejs/biome and vitest as dev dependencies. vue-tsc for Vue repos.
+#   - Optional "build" script. The build job skips it when it does not exist.
+#
+# Caller permissions: contents: read.
+# Required check: "<caller job id> / required" (use job id "ci" -> "ci / required").
+name: ts-ci
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        default: "24"
+      working-directory:
+        type: string
+        default: "."
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: ${{ inputs.working-directory }}/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Biome (lint + format + imports)
+        run: pnpm exec biome ci .
+      - name: Ban v-html (FR-17)
+        run: |
+          if matches=$(git grep -n -E '(^|[[:space:]])v-html(=|[[:space:]]|$)' -- '*.vue'); then
+            echo "::error::v-html is not allowed (FR-17). Render text or sanitized Markdown."
+            echo "$matches"
+            exit 1
+          fi
+
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: ${{ inputs.working-directory }}/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Type check (vue-tsc when present, else tsc)
+        run: |
+          if [[ -x node_modules/.bin/vue-tsc ]]; then
+            pnpm exec vue-tsc --noEmit
+          elif [[ -f tsconfig.json ]]; then
+            pnpm exec tsc --noEmit
+          else
+            echo "::error::No vue-tsc and no tsconfig.json. Add one to type check."
+            exit 1
+          fi
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: ${{ inputs.working-directory }}/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Vitest
+        run: pnpm exec vitest run
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: ${{ inputs.working-directory }}/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm run --if-present build
+
+  required:
+    if: always()
+    needs: [lint, typecheck, test, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: All jobs passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: $RESULTS"
+          for result in $RESULTS; do
+            [[ "$result" == "success" ]] || exit 1
+          done
