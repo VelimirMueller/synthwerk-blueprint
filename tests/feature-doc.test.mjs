@@ -8,6 +8,7 @@ import { describe, it } from 'node:test'
 import {
   check,
   globToRegExp,
+  lintFrontmatter,
   loadDocs,
   main,
   parseFrontmatter,
@@ -93,6 +94,20 @@ describe('feature-doc helpers', () => {
       '---\nstatus: beta # note\npaths:\n  - "a/**"\n  - b/*\napi: ["x"]\n---\n'
     )
     assert.deepEqual(meta, { status: 'beta', paths: ['a/**', 'b/*'], api: ['x'] })
+  })
+
+  it('parseFrontmatter - unquoted flow array, open quote - keeps raw strings', () => {
+    const meta = parseFrontmatter('---\npaths: [internal/**]\ntitle: "Open\n---\n')
+    assert.deepEqual(meta, { paths: '[internal/**]', title: '"Open' })
+    assert.deepEqual(
+      lintFrontmatter('docs/features/x.md', {
+        ...meta,
+        slug: 'x',
+        status: 'beta',
+        updated: '2026-10-09'
+      }),
+      ['docs/features/x.md: paths must list at least one glob']
+    )
   })
 
   it('steWarnings - code, tables and headings - are skipped', () => {

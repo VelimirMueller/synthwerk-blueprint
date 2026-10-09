@@ -16,6 +16,7 @@ function runBiome(dir) {
     cwd: work,
     encoding: 'utf8'
   })
+  assert.equal(res.error, undefined, 'run pnpm install first: node_modules/.bin/biome is missing')
   const json = res.stdout.slice(res.stdout.indexOf('{'))
   return { status: res.status, report: JSON.parse(json) }
 }

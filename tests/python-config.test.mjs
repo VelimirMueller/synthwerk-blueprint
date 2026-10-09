@@ -1,5 +1,6 @@
 // Proves that configs/python/ruff.toml and mypy.toml pass clean code and
-// report seeded issues. Tool versions match the blueprint spec (§3.5).
+// report seeded issues. Tool versions match the blueprint spec (§3.5);
+// mypy 2.4.0 and ruff 0.16.10 resolve on PyPI (checked 2026-10-09).
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { join, resolve } from 'node:path'

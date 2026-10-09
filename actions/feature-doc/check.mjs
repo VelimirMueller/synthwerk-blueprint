@@ -46,10 +46,19 @@ export function globToRegExp(glob) {
 
 export const matchesAny = (path, globs) => globs.some((g) => globToRegExp(g).test(path))
 
+// Invalid input never throws: the raw string is kept and lintFrontmatter
+// reports the key (for example "paths must list at least one glob").
 function parseValue(raw) {
   const value = raw.trim()
-  if (value.startsWith('[')) return JSON.parse(value)
-  if (/^["']/.test(value)) return value.slice(1, value.indexOf(value[0], 1))
+  if (value.startsWith('[')) {
+    try {
+      return JSON.parse(value.replace(/\s+#.*$/, ''))
+    } catch {
+      return value
+    }
+  }
+  const close = /^["']/.test(value) ? value.indexOf(value[0], 1) : -1
+  if (close > 0) return value.slice(1, close)
   return value.replace(/\s+#.*$/, '')
 }
 
