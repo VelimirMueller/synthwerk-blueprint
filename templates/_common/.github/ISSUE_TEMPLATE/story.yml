@@ -1,0 +1,32 @@
+name: Story
+description: A unit of work that is ready for a sprint (Definition of Ready).
+labels: ["story"]
+body:
+  - type: input
+    id: id
+    attributes:
+      label: Story ID and epic
+      placeholder: "S-E1-04, epic E1"
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Testable. ASD-STE100. One criterion per bullet.
+    validations:
+      required: true
+  - type: textarea
+    id: refs
+    attributes:
+      label: FR / NFR IDs and dependencies
+    validations:
+      required: true
+  - type: dropdown
+    id: security
+    attributes:
+      label: Security and privacy impact
+      description: High needs an ADR.
+      options: ["none", "low", "high"]
+    validations:
+      required: true

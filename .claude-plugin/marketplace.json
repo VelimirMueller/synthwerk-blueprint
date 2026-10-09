@@ -1,0 +1,14 @@
+{
+  "name": "synthwerk",
+  "description": "Claude Code skills for synthwerk-* repos",
+  "owner": {
+    "name": "Velimir Mueller"
+  },
+  "plugins": [
+    {
+      "name": "synthwerk",
+      "source": "./",
+      "description": "Synthwerk repo skills: /feature-doc"
+    }
+  ]
+}

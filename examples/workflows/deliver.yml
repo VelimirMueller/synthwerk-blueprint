@@ -1,0 +1,25 @@
+# Caller example (repos with a Dockerfile). Copy to .github/workflows/deliver.yml.
+# Pull request: build, SBOM, Trivy scan. Push to main or a v* tag: also push to
+# ghcr.io and sign with cosign.
+name: deliver
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  image:
+    # GitHub checks these at start, also on pull requests, where nothing is pushed.
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    uses: VelimirMueller/synthwerk-blueprint/.github/workflows/image.yml@v1

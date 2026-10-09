@@ -1,0 +1,40 @@
+# Reusable feature-doc check (D-16). Runs only on pull requests.
+#
+# A PR that changes a path under the source globs must also change the
+# docs/features/<slug>.md whose `paths:` globs cover it. Opt-out: label
+# `no-feature-doc` plus a line `no-feature-doc: <reason>` in the PR body.
+#
+# Inputs
+#   source-globs  Comma list of source globs.   default: "src/**,internal/**,api/**,app/**"
+#
+# Caller trigger: pull_request with types opened, synchronize, reopened, edited,
+# labeled, unlabeled (so a label or body change runs the check again).
+# Caller permissions: contents: read.
+name: feature-doc
+
+on:
+  workflow_call:
+    inputs:
+      source-globs:
+        type: string
+        default: "src/**,internal/**,api/**,app/**"
+
+permissions: {}
+
+jobs:
+  check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # Pinned to the blueprint major tag. Move together with this workflow.
+      - uses: VelimirMueller/synthwerk-blueprint/actions/feature-doc@v1
+        with:
+          base: ${{ github.event.pull_request.base.sha }}
+          source-globs: ${{ inputs.source-globs }}

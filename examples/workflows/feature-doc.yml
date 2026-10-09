@@ -1,0 +1,20 @@
+# Caller example (all repos). Copy to .github/workflows/feature-doc.yml.
+# Required check for the ruleset: "feature-doc / check".
+# The extra pull_request types run the check again after a label or PR body edit.
+name: feature-doc
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  feature-doc:
+    permissions:
+      contents: read
+    uses: VelimirMueller/synthwerk-blueprint/.github/workflows/feature-doc.yml@v1

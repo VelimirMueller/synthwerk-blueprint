@@ -1,0 +1,4 @@
+# One owner today. This file makes the "require code owner review" rule effective.
+*          @VelimirMueller
+/.github/  @VelimirMueller
+/infra/    @VelimirMueller

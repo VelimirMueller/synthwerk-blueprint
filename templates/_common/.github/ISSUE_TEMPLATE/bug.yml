@@ -1,0 +1,31 @@
+name: Bug
+description: Something does not work as documented.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps
+      description: Numbered steps that show the problem.
+      placeholder: "1. Open …\n2. Click …"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+      description: What must happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: What happens. Add logs without secrets or personal data.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or environment
+      placeholder: "v1.2.3 on stg"
