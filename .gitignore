@@ -1,0 +1,17 @@
+# OS and editors
+.DS_Store
+.idea/
+.vscode/
+
+# Node
+node_modules/
+
+# Python
+__pycache__/
+.venv/
+.mypy_cache/
+.ruff_cache/
+
+# Build output
+dist/
+coverage/
