@@ -1,0 +1,21 @@
+# Caller example (Python). Copy to .github/workflows/ci.yml in the service repo.
+# Required check for the ruleset: "ci / required".
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ci:
+    permissions:
+      contents: read
+    uses: VelimirMueller/synthwerk-blueprint/.github/workflows/py-ci.yml@v1
