@@ -1,5 +1,5 @@
 name: synthwerk feature-doc check
-description: Fails a pull request that changes feature source without its docs/features/<slug>.md. Needs a full clone (fetch-depth 0) and node on PATH (GitHub-hosted runners have it).
+description: Fails a pull request that changes feature source without its docs/features/<slug>.md. Deletions and pure renames (no content change) do not count. Needs a full clone (fetch-depth 0) and node on PATH (GitHub-hosted runners have it).
 inputs:
   base:
     description: Base commit or ref to diff against.

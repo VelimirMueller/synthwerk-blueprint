@@ -16,6 +16,7 @@ its doc, so run this skill before every PR.
 | The change touches a path that a feature doc covers (`paths:` globs) | yes |
 | The change adds an API operation, event type, MCP tool or domain package | yes (new doc) |
 | The change touches only tests, CI, dependencies, formatting or docs | no (the check skips) |
+| The change only deletes files or purely renames them (no content change) | no (the check skips) |
 | Before `/ship` | yes |
 
 ## Steps
@@ -102,6 +103,8 @@ The reusable workflow `feature-doc.yml` runs `actions/feature-doc/check.mjs` on 
 | Frontmatter invalid (title, slug, status, updated, paths) | error |
 | Changed doc has a sentence above 20 words | warning |
 | Only tests, CI, dependencies or docs changed | pass |
+| A source file is deleted (D) or purely renamed (R100, no content change) | pass |
+| A source file is renamed with a content change (R<100) | counts as its new path |
 
 Opt-out for a change with no feature effect: add the label `no-feature-doc` **and** a line
 `no-feature-doc: <reason>` in the PR body. A label without a reason still fails.

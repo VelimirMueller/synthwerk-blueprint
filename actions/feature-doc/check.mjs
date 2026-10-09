@@ -7,6 +7,8 @@
 //        FEATURE_DOC_LABELS          PR labels as a JSON array
 //        FEATURE_DOC_BODY            PR body (opt-out reason)
 //        FEATURE_DOC_SOURCE_GLOBS    comma list (default: src/**,internal/**,api/**,app/**)
+// A deleted file (D) and a pure rename (R100) are not source changes. A rename
+// with a content change (R<100) counts under its new path.
 // Exit:  0 pass, 1 check failed, 2 usage or git error.
 import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
@@ -207,12 +209,30 @@ export function check({
   return { errors, warnings, notices }
 }
 
+/**
+ * Filters `git diff --name-status -M` output to the paths that count as changes.
+ * Deleted files (D) and pure renames (R100) do not count. A rename with a content
+ * change (R<100) counts under its new path.
+ */
+export function changedFromNameStatus(out) {
+  const paths = []
+  for (const line of out.split('\n')) {
+    const entry = line.match(/^([A-Z]+)(\d+)?\t(.+)$/)
+    if (!entry) continue
+    const [, status, score, rest] = entry
+    if (status === 'D' || (status === 'R' && score === '100')) continue
+    const names = rest.split('\t')
+    paths.push(status === 'R' || status === 'C' ? names[names.length - 1] : names[0])
+  }
+  return paths
+}
+
 function changedFiles(root, base) {
-  const out = execFileSync('git', ['diff', '--name-only', '--no-renames', `${base}...HEAD`], {
+  const out = execFileSync('git', ['diff', '--name-status', '-M', `${base}...HEAD`], {
     cwd: root,
     encoding: 'utf8'
   })
-  return out.split('\n').filter(Boolean)
+  return changedFromNameStatus(out)
 }
 
 function parseArgs(argv) {
