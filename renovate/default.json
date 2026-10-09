@@ -1,0 +1,65 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Synthwerk Renovate preset. Use: github>VelimirMueller/synthwerk-blueprint//renovate/default",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests",
+    ":pinDevDependencies"
+  ],
+  "timezone": "Europe/Berlin",
+  "schedule": ["before 9am on monday"],
+  "postUpdateOptions": ["gomodTidy"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 9am on monday"]
+  },
+  "packageRules": [
+    {
+      "description": "Patch updates of dev tooling merge after green CI.",
+      "matchDepTypes": ["devDependencies", "dev"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "OpenTelemetry in one PR.",
+      "matchPackageNames": ["/opentelemetry/"],
+      "groupName": "opentelemetry"
+    },
+    {
+      "description": "Testcontainers in one PR.",
+      "matchPackageNames": ["/testcontainers/"],
+      "groupName": "testcontainers"
+    },
+    {
+      "description": "OpenTofu providers in one PR.",
+      "matchManagers": ["terraform"],
+      "matchDepTypes": ["provider", "required_provider"],
+      "groupName": "opentofu providers"
+    },
+    {
+      "description": "Synthwerk contracts packages in one PR.",
+      "matchPackageNames": ["/^@synthwerk/contracts/", "/synthwerk-contracts/"],
+      "groupName": "synthwerk contracts"
+    },
+    {
+      "description": "Biome alone, never auto-merged: a new version can change formatting.",
+      "matchPackageNames": ["@biomejs/biome", "@synthwerk/biome-config"],
+      "groupName": "biome",
+      "automerge": false
+    },
+    {
+      "description": "Never auto-merge majors, base images or @synthwerk packages.",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "matchDatasources": ["docker"],
+      "automerge": false
+    },
+    {
+      "matchPackageNames": ["@synthwerk/**"],
+      "automerge": false
+    }
+  ]
+}
