@@ -1,0 +1,21 @@
+name: synthwerk feature-doc check
+description: Fails a pull request that changes feature source without its docs/features/<slug>.md.
+inputs:
+  base:
+    description: Base commit or ref to diff against.
+    required: true
+  source-globs:
+    description: Comma list of source globs that need a feature doc.
+    default: "src/**,internal/**,api/**,app/**"
+runs:
+  using: composite
+  steps:
+    - name: Check feature docs
+      shell: bash --noprofile --norc -euo pipefail {0}
+      env:
+        SYNTHWERK_FEATURE_DOC_BASE: ${{ inputs.base }}
+        FEATURE_DOC_SOURCE_GLOBS: ${{ inputs.source-globs }}
+        FEATURE_DOC_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        FEATURE_DOC_BODY: ${{ github.event.pull_request.body }}
+        CHECKER: ${{ github.action_path }}/check.mjs
+      run: node "$CHECKER"
