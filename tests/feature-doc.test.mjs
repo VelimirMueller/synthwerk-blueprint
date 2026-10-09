@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it } from 'node:test'
 import {
+  changedFromNameStatus,
   check,
   globToRegExp,
   lintFrontmatter,
@@ -115,6 +116,21 @@ describe('feature-doc helpers', () => {
     assert.deepEqual(steWarnings('f.md', text), [])
   })
 
+  it('changedFromNameStatus - D and R100 skipped, R<100 counts new path', () => {
+    const out = [
+      'A\tsrc/new.ts',
+      'D\tsrc/gone.ts',
+      'R100\tsrc/old-name.ts\tsrc/new-name.ts',
+      'R075\tsrc/edited-old.ts\tsrc/edited-new.ts',
+      'M\tREADME.md'
+    ].join('\n')
+    assert.deepEqual(changedFromNameStatus(out), ['src/new.ts', 'src/edited-new.ts', 'README.md'])
+  })
+
+  it('changedFromNameStatus - empty diff - returns empty list', () => {
+    assert.deepEqual(changedFromNameStatus(''), [])
+  })
+
   it('loadDocs - template file - is skipped', () => {
     assert.deepEqual(
       docs.map((d) => d.file),
@@ -124,39 +140,78 @@ describe('feature-doc helpers', () => {
 })
 
 describe('feature-doc cli', () => {
-  it('main - git repo with stale doc - exits 1', () => {
+  // Fixture repo on branch main with `base-ref` at the fixture state.
+  function initRepo() {
     const repo = mkdtempSync(join(tmpdir(), 'feature-doc-'))
+    // Isolate from the developer's git config (signing, tag rules, hooks).
+    const env = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
+    const git = (...args) => execFileSync('git', args, { cwd: repo, env, stdio: 'pipe' })
+    const commit = (...args) =>
+      git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', ...args)
+    cpSync(fixture, repo, { recursive: true })
+    git('init', '-q', '-b', 'main')
+    commit('--allow-empty', '-m', 'base')
+    git('add', '-A')
+    commit('-m', 'add')
+    git('branch', 'base-ref')
+    return { repo, git, commit }
+  }
+
+  function runMain(repo, base = 'base-ref') {
+    const log = console.log
+    console.log = () => {}
     try {
-      // Isolate from the developer's git config (signing, tag rules, hooks).
-      const env = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
-      const git = (...args) => execFileSync('git', args, { cwd: repo, env, stdio: 'pipe' })
-      cpSync(fixture, repo, { recursive: true })
-      git('init', '-q', '-b', 'main')
-      git(
-        '-c',
-        'user.name=t',
-        '-c',
-        'user.email=t@t',
-        'commit',
-        '-q',
-        '--allow-empty',
-        '-m',
-        'base'
-      )
-      git('add', '-A')
-      git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', 'add')
-      git('branch', 'base-ref')
+      return main(['--root', repo, '--base', base], {})
+    } finally {
+      console.log = log
+    }
+  }
+
+  it('main - git repo with stale doc - exits 1', () => {
+    const { repo, commit } = initRepo()
+    try {
       writeFileSync(join(repo, SRC), 'package widgettoken\n\nconst TTL = 60\n')
-      git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-am', 'change')
-      const log = console.log
-      console.log = () => {}
-      try {
-        assert.equal(main(['--root', repo, '--base', 'base-ref'], {}), 1)
-        assert.equal(main(['--root', repo, '--base', 'HEAD'], {}), 0)
-        assert.equal(main(['--root', repo, '--base', 'no-such-ref'], {}), 2)
-      } finally {
-        console.log = log
-      }
+      commit('-am', 'change')
+      assert.equal(runMain(repo), 1)
+      assert.equal(runMain(repo, 'HEAD'), 0)
+      assert.equal(runMain(repo, 'no-such-ref'), 2)
+    } finally {
+      rmSync(repo, { recursive: true, force: true })
+    }
+  })
+
+  it('main - deletion-only source change - passes without a doc change', () => {
+    const { repo, git, commit } = initRepo()
+    try {
+      git('rm', '-q', SRC)
+      commit('-m', 'delete source file')
+      assert.equal(runMain(repo), 0)
+    } finally {
+      rmSync(repo, { recursive: true, force: true })
+    }
+  })
+
+  it('main - pure rename under a source glob - passes without a doc change', () => {
+    const { repo, git, commit } = initRepo()
+    try {
+      git('mv', SRC, 'internal/widgettoken/token_v2.go')
+      commit('-m', 'pure rename')
+      assert.equal(runMain(repo), 0)
+    } finally {
+      rmSync(repo, { recursive: true, force: true })
+    }
+  })
+
+  it('main - rename with content change - still needs the doc', () => {
+    const { repo, git, commit } = initRepo()
+    try {
+      git('mv', SRC, 'internal/widgettoken/token_v2.go')
+      writeFileSync(
+        join(repo, 'internal', 'widgettoken', 'token_v2.go'),
+        'package widgettoken\n\nconst TTL = 60\n'
+      )
+      commit('-am', 'rename with edit')
+      assert.equal(runMain(repo), 1)
     } finally {
       rmSync(repo, { recursive: true, force: true })
     }
