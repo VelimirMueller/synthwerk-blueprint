@@ -67,6 +67,14 @@
   `id-token: write`. The caller must grant them, also for pull requests.
 - Every `run` step uses `bash -euo pipefail`.
 
+## Rules for dependency updates (Renovate)
+
+- Renovate opens an update PR only when the release is **7 days** old (`minimumReleaseAge`,
+  `internalChecksFilter: strict`). This blocks a hijacked release that is pulled within days.
+- Only patch updates of dev dependencies merge automatically, after the 7 days and green CI.
+- Security fixes (`vulnerabilityAlerts`) do not wait. They get the label `security`.
+- Majors, base images, Biome and `@synthwerk/*` packages never merge automatically.
+
 ## Development
 
 ```sh

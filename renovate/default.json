@@ -7,6 +7,12 @@
     "helpers:pinGitHubActionDigests",
     ":pinDevDependencies"
   ],
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
+  "vulnerabilityAlerts": {
+    "minimumReleaseAge": null,
+    "labels": ["security"]
+  },
   "timezone": "Europe/Berlin",
   "schedule": ["before 9am on monday"],
   "postUpdateOptions": ["gomodTidy"],
@@ -16,7 +22,7 @@
   },
   "packageRules": [
     {
-      "description": "Patch updates of dev tooling merge after green CI.",
+      "description": "Patch updates of dev tooling merge after green CI, once the release is 7 days old.",
       "matchDepTypes": ["devDependencies", "dev"],
       "matchUpdateTypes": ["patch"],
       "automerge": true
