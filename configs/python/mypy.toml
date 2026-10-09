@@ -1,0 +1,5 @@
+# mypy strict snippet for synthwerk-* Python repos.
+# Paste into pyproject.toml. Run with `uv run mypy` (it reads `files`).
+[tool.mypy]
+strict = true
+files = ["src", "tests"]
