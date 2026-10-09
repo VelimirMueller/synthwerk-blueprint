@@ -1,0 +1,27 @@
+{
+  "name": "@synthwerk/biome-config",
+  "version": "1.0.0",
+  "description": "Shared Biome lint and format config for synthwerk-* repos",
+  "license": "MIT",
+  "author": "Velimir Mueller",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VelimirMueller/synthwerk-blueprint.git",
+    "directory": "packages/biome-config"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./biome.json",
+    "./react": "./react.json"
+  },
+  "files": [
+    "biome.json",
+    "react.json"
+  ],
+  "peerDependencies": {
+    "@biomejs/biome": "2.5.15"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

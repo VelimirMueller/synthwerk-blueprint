@@ -1,0 +1,5 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "extends": ["./packages/biome-config/biome.json"],
+  "files": { "includes": ["**", "!tests/fixtures", "!!packages/biome-config/biome.json"] }
+}
