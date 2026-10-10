@@ -1,0 +1,17 @@
+{
+  "divider-what-v2.svg": "01 WHAT IT DOES. FIVE STEPS. SAME CI EVERYWHERE.",
+  "divider-start-v2.svg": "02 QUICK START. COPY. PASTE. GREEN.",
+  "divider-how-v2.svg": "03 HOW IT WORKS. THIN CALLERS, FAT WORKFLOWS.",
+  "divider-usage-v2.svg": "04 USAGE. EVERY PATH, CONDENSED.",
+  "divider-status-v2.svg": "05 STATUS. TESTED. NOT BY VIBES.",
+  "stats-v2-dark.svg": "5 REUSABLE WORKFLOWS. 3 LANGUAGES, ONE LINT. 1.0.1 CURRENT RELEASE. 0 DEPS IN THE CHECKER",
+  "stats-v2-light.svg": "5 REUSABLE WORKFLOWS. 3 LANGUAGES, ONE LINT. 1.0.1 CURRENT RELEASE. 0 DEPS IN THE CHECKER",
+  "features-v2-dark.svg": "WORKFLOWS: Reusable CI for TypeScript, Go and Python. Image build with SBOM, Trivy scan and cosign signing. Callers pin @v1. CONFIGS: @synthwerk/biome-config, .golangci.yml, ruff.toml and a mypy strict snippet. Copy the file. Done. TEMPLATES: README skeleton, PR and issue templates, CODEOWNERS, ADR and feature-doc templates, Renovate preset. Plus the /feature-doc skill",
+  "features-v2-light.svg": "WORKFLOWS: Reusable CI for TypeScript, Go and Python. Image build with SBOM, Trivy scan and cosign signing. Callers pin @v1. CONFIGS: @synthwerk/biome-config, .golangci.yml, ruff.toml and a mypy strict snippet. Copy the file. Done. TEMPLATES: README skeleton, PR and issue templates, CODEOWNERS, ADR and feature-doc templates, Renovate preset. Plus the /feature-doc skill",
+  "start-v2-dark.svg": "Terminal: $ gh repo clone VelimirMueller/synthwerk-blueprint | $ cp examples/workflows/ci-ts.yml .github/workflows/ci.yml | $ pnpm add -D -E @biomejs/biome@2.5.15 @synthwerk/biome-config | # two files. the same ci as every synthwerk repo.",
+  "start-v2-light.svg": "Terminal: $ gh repo clone VelimirMueller/synthwerk-blueprint | $ cp examples/workflows/ci-ts.yml .github/workflows/ci.yml | $ pnpm add -D -E @biomejs/biome@2.5.15 @synthwerk/biome-config | # two files. the same ci as every synthwerk repo.",
+  "flow-v2-dark.svg": "CALLER REPO -> @V1 TAG -> BLUEPRINT -> RENOVATE. The heavy workflows live here. Your repo stays thin.",
+  "flow-v2-light.svg": "CALLER REPO -> @V1 TAG -> BLUEPRINT -> RENOVATE. The heavy workflows live here. Your repo stays thin.",
+  "status-v2-dark.svg": "CI workflows (ts, go, py, image): released, selftest green. feature-doc check: v1.0.1, zero deps. templates and process docs: in use. @synthwerk/biome-config: local package, not on npm. adoption by synthwerk repos: M0, in progress",
+  "status-v2-light.svg": "CI workflows (ts, go, py, image): released, selftest green. feature-doc check: v1.0.1, zero deps. templates and process docs: in use. @synthwerk/biome-config: local package, not on npm. adoption by synthwerk repos: M0, in progress"
+}

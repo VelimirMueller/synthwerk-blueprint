@@ -1,0 +1,43 @@
+{
+  "group": "flagship",
+  "version": "v2",
+  "dividers": [
+    {"key": "what",   "index": "01", "title": "WHAT IT DOES", "caption": "FIVE STEPS. SAME CI EVERYWHERE.",  "art": "strip-flagship-1"},
+    {"key": "start",  "index": "02", "title": "QUICK START",  "caption": "COPY. PASTE. GREEN.",              "art": "strip-flagship-2"},
+    {"key": "how",    "index": "03", "title": "HOW IT WORKS", "caption": "THIN CALLERS, FAT WORKFLOWS.",     "art": "strip-flagship-3"},
+    {"key": "usage",  "index": "04", "title": "USAGE",        "caption": "EVERY PATH, CONDENSED.",           "art": "strip-flagship-4"},
+    {"key": "status", "index": "05", "title": "STATUS",       "caption": "TESTED. NOT BY VIBES.",            "art": "strip-flagship-5"}
+  ],
+  "panels": [
+    {"key": "stats", "type": "stats", "title": "BLUEPRINT IN NUMBERS", "items": [
+      {"value": "5", "label": "REUSABLE WORKFLOWS"},
+      {"value": "3", "label": "LANGUAGES, ONE LINT"},
+      {"value": "1.0.1", "label": "CURRENT RELEASE"},
+      {"value": "0", "label": "DEPS IN THE CHECKER"}
+    ]},
+    {"key": "features", "type": "cards", "title": "WHAT ADOPTERS GET", "items": [
+      {"title": "WORKFLOWS", "text": "Reusable CI for TypeScript, Go and Python. Image build with SBOM, Trivy scan and cosign signing. Callers pin @v1."},
+      {"title": "CONFIGS", "text": "@synthwerk/biome-config, .golangci.yml, ruff.toml and a mypy strict snippet. Copy the file. Done."},
+      {"title": "TEMPLATES", "text": "README skeleton, PR and issue templates, CODEOWNERS, ADR and feature-doc templates, Renovate preset. Plus the /feature-doc skill."}
+    ]},
+    {"key": "start", "type": "terminal", "title": "ADOPT, THE SHORT VERSION", "lines": [
+      "$ gh repo clone VelimirMueller/synthwerk-blueprint",
+      "$ cp examples/workflows/ci-ts.yml .github/workflows/ci.yml",
+      "$ pnpm add -D -E @biomejs/biome@2.5.15 @synthwerk/biome-config",
+      "# two files. the same ci as every synthwerk repo."
+    ]},
+    {"key": "flow", "type": "flow", "title": "ONE CALLER, KEPT CURRENT", "nodes": [
+      {"title": "CALLER REPO", "sub": "ci.yml, about 10 lines"},
+      {"title": "@V1 TAG", "sub": "moves on minor and patch"},
+      {"title": "BLUEPRINT", "sub": "build, lint, test, image", "hot": true},
+      {"title": "RENOVATE", "sub": "re-pins SHAs, 7 days late"}
+    ], "caption": "The heavy workflows live here. Your repo stays thin."},
+    {"key": "status", "type": "status", "title": "WHAT WORKS TODAY", "rows": [
+      {"label": "CI workflows (ts, go, py, image)", "value": "released, selftest green", "state": "ok"},
+      {"label": "feature-doc check", "value": "v1.0.1, zero deps", "state": "ok"},
+      {"label": "templates and process docs", "value": "in use", "state": "ok"},
+      {"label": "@synthwerk/biome-config", "value": "local package, not on npm", "state": "wip"},
+      {"label": "adoption by synthwerk repos", "value": "M0, in progress", "state": "wip"}
+    ]}
+  ]
+}
