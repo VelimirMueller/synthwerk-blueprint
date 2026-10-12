@@ -44,10 +44,22 @@
       "type": "stats",
       "title": "BLUEPRINT IN NUMBERS",
       "items": [
-        { "value": "5", "label": "REUSABLE WORKFLOWS" },
-        { "value": "3", "label": "LANGUAGES, ONE LINT" },
-        { "value": "1.0.1", "label": "CURRENT RELEASE" },
-        { "value": "0", "label": "DEPS IN THE CHECKER" }
+        {
+          "value": "5",
+          "label": "REUSABLE WORKFLOWS"
+        },
+        {
+          "value": "3",
+          "label": "LANGUAGES, ONE LINT"
+        },
+        {
+          "value": "1.0.1",
+          "label": "CURRENT RELEASE"
+        },
+        {
+          "value": "0",
+          "label": "DEPS IN THE CHECKER"
+        }
       ]
     },
     {
@@ -85,10 +97,23 @@
       "type": "flow",
       "title": "ONE CALLER, KEPT CURRENT",
       "nodes": [
-        { "title": "CALLER REPO", "sub": "ci.yml, about 10 lines" },
-        { "title": "@V1 TAG", "sub": "moves on minor and patch" },
-        { "title": "BLUEPRINT", "sub": "build, lint, test, image", "hot": true },
-        { "title": "RENOVATE", "sub": "re-pins SHAs, 7 days late" }
+        {
+          "title": "CALLER REPO",
+          "sub": "ci.yml, about 10 lines"
+        },
+        {
+          "title": "@V1 TAG",
+          "sub": "moves on minor and patch"
+        },
+        {
+          "title": "BLUEPRINT",
+          "sub": "build, lint, test, image",
+          "hot": true
+        },
+        {
+          "title": "RENOVATE",
+          "sub": "re-pins SHAs, 7 days late"
+        }
       ],
       "caption": "The heavy workflows live here. Your repo stays thin."
     },
@@ -102,15 +127,411 @@
           "value": "released, selftest green",
           "state": "ok"
         },
-        { "label": "feature-doc check", "value": "v1.0.1, zero deps", "state": "ok" },
-        { "label": "templates and process docs", "value": "in use", "state": "ok" },
+        {
+          "label": "feature-doc check",
+          "value": "v1.0.1, zero deps",
+          "state": "ok"
+        },
+        {
+          "label": "templates and process docs",
+          "value": "in use",
+          "state": "ok"
+        },
         {
           "label": "@synthwerk/biome-config",
           "value": "local package, not on npm",
           "state": "wip"
         },
-        { "label": "adoption by synthwerk repos", "value": "M0, in progress", "state": "wip" }
+        {
+          "label": "adoption by synthwerk repos",
+          "value": "M0, in progress",
+          "state": "wip"
+        }
       ]
+    },
+    {
+      "key": "lead",
+      "type": "lead",
+      "title": "ABOUT",
+      "text": "**synthwerk-blueprint** makes every `synthwerk-*` repo build, lint and document the same way. A repo adopts it in five steps. Updates arrive as normal PRs. Nothing applies itself."
+    },
+    {
+      "key": "what",
+      "type": "notes",
+      "title": "WHAT IT DOES",
+      "columns": 2,
+      "items": [
+        {
+          "lead": "One repo for the family",
+          "text": "It holds the CI, the lint configs and the templates for the whole synthwerk family."
+        },
+        {
+          "lead": "Thin callers",
+          "text": "The caller workflow stays at about 10 lines. The job matrix lives here."
+        },
+        {
+          "lead": "Docs or no merge",
+          "text": "A PR that changes feature source without its feature doc fails the check. The checker has zero dependencies."
+        },
+        {
+          "lead": "Strict by default",
+          "text": "Every `run` step runs `bash -euo pipefail`. Every job gets `contents: read` only."
+        }
+      ]
+    },
+    {
+      "key": "adopt12",
+      "type": "terminal",
+      "title": "STEPS 1 AND 2, THE COPY-PASTE PART",
+      "lines": [
+        "# 1) workflows (pick ci-ts.yml, ci-go.yml or ci-py.yml)",
+        "$ cp examples/workflows/ci-ts.yml .github/workflows/ci.yml",
+        "$ cp examples/workflows/feature-doc.yml .github/workflows/",
+        "$ cp examples/workflows/deliver.yml .github/workflows/   # only with a Dockerfile",
+        "# 2) lint config (TS / Vue)",
+        "$ pnpm add -D -E @biomejs/biome@2.5.15 @synthwerk/biome-config",
+        "# biome.json in the repo root:",
+        "{ \"extends\": [\"@synthwerk/biome-config\"] }",
+        "# steps 3 to 5 (templates, Claude skill, required checks): see 04 USAGE"
+      ]
+    },
+    {
+      "key": "gate",
+      "type": "flow",
+      "title": "YOUR REPO, THIS REPO",
+      "nodes": [
+        {
+          "title": "CI.YML",
+          "sub": "In your repo, about 10 lines."
+        },
+        {
+          "title": "@V1",
+          "sub": "ts-ci, go-ci, py-ci, image, feature-doc."
+        },
+        {
+          "title": "REQUIRED ON MAIN",
+          "sub": "ci / required and feature-doc / check."
+        },
+        {
+          "title": "MERGE",
+          "sub": "Both green, then merge.",
+          "hot": true
+        }
+      ],
+      "caption": "Renovate re-pins the SHAs, 7 days late."
+    },
+    {
+      "key": "how",
+      "type": "notes",
+      "title": "THE RULES BEHIND IT",
+      "columns": 2,
+      "items": [
+        {
+          "lead": "Reusable workflows",
+          "text": "Callers use `@v1`. The `v1` tag moves on minor and patch releases. A breaking input change makes `v2`."
+        },
+        {
+          "lead": "Pinned supply chain",
+          "text": "Third-party actions are pinned by full commit SHA with a version comment. Renovate (`helpers:pinGitHubActionDigests`) keeps the pins current."
+        },
+        {
+          "lead": "Least privilege",
+          "text": "Each job gets `contents: read` only. `image.yml` also needs `packages: write` and `id-token: write`. The caller must grant them, also for pull requests."
+        },
+        {
+          "lead": "Renovate waits",
+          "text": "An update PR opens only when the release is 7 days old. Settings: `minimumReleaseAge` and `internalChecksFilter: strict`. A hijacked release has to stay quiet for a week."
+        }
+      ]
+    },
+    {
+      "key": "inside",
+      "type": "commands",
+      "title": "WHAT IS INSIDE",
+      "rows": [
+        {
+          "cmd": ".github/workflows/ts-ci.yml",
+          "text": "TypeScript / Vue: pnpm, `biome ci`, `vue-tsc` or `tsc`, Vitest, build, `v-html` ban."
+        },
+        {
+          "cmd": ".github/workflows/go-ci.yml",
+          "text": "Go: gofmt, golangci-lint v2, `go test`, `go build`."
+        },
+        {
+          "cmd": ".github/workflows/py-ci.yml",
+          "text": "Python: uv, ruff check + format, mypy strict, pytest."
+        },
+        {
+          "cmd": ".github/workflows/image.yml",
+          "text": "Image: build, SBOM (syft), Trivy (fails on critical), push to GHCR and cosign sign on `main` / `v*` only."
+        },
+        {
+          "cmd": ".github/workflows/feature-doc.yml",
+          "text": "Fails a PR that changes feature source without its feature doc."
+        },
+        {
+          "cmd": "examples/workflows/",
+          "text": "Thin caller workflows to copy into a repo."
+        },
+        {
+          "cmd": "packages/biome-config/",
+          "text": "npm package `@synthwerk/biome-config` (Biome 2.5, formatter ON)."
+        },
+        {
+          "cmd": "configs/go/, configs/python/",
+          "text": "`.golangci.yml`, `ruff.toml`, mypy strict snippet."
+        },
+        {
+          "cmd": "templates/_common/",
+          "text": "README skeleton, PR and issue templates, CODEOWNERS, ADR and feature-doc templates, `renovate.json`."
+        },
+        {
+          "cmd": "renovate/default.json",
+          "text": "Renovate preset."
+        },
+        {
+          "cmd": "skills/feature-doc/",
+          "text": "Claude skill `/feature-doc` (plugin `synthwerk`)."
+        },
+        {
+          "cmd": "actions/feature-doc/",
+          "text": "The feature-doc checker (Node, no dependencies)."
+        },
+        {
+          "cmd": "docs/process/",
+          "text": "[Definition of Ready](docs/process/definition-of-ready.md) and [Definition of Done](docs/process/definition-of-done.md)."
+        }
+      ]
+    },
+    {
+      "key": "adopt",
+      "type": "notes",
+      "title": "ADOPT THE BLUEPRINT IN FIVE STEPS",
+      "items": [
+        {
+          "lead": "Workflows",
+          "text": "Copy `examples/workflows/ci-<ts|go|py>.yml` to `.github/workflows/ci.yml`. Copy `feature-doc.yml`. Copy `deliver.yml` when the repo has a `Dockerfile`."
+        },
+        {
+          "lead": "Lint config",
+          "text": "**TS / Vue:** `pnpm add -D -E @biomejs/biome@2.5.15 @synthwerk/biome-config`, then `biome.json` = `{ \"extends\": [\"@synthwerk/biome-config\"] }`. **Go:** copy `configs/go/.golangci.yml` to the repo root. **Python:** copy `configs/python/ruff.toml` to the repo root. Paste `configs/python/mypy.toml` into `pyproject.toml`."
+        },
+        {
+          "lead": "Templates",
+          "text": "Copy `templates/_common/` into the repo root. Replace every `<placeholder>`."
+        },
+        {
+          "lead": "Claude skill",
+          "text": "Add the marketplace to `.claude/settings.json` in the repo (JSON below). Or install it once: `/plugin install synthwerk --marketplace VelimirMueller/synthwerk-blueprint`. Add to the repo `CLAUDE.md`: \"Run `/feature-doc` before a PR.\""
+        },
+        {
+          "lead": "Required checks",
+          "text": "Set `ci / required` and `feature-doc / check` as required checks on `main` (ruleset in `synthwerk-infra`)."
+        }
+      ]
+    },
+    {
+      "key": "skill",
+      "type": "terminal",
+      "title": "STEP 4 · .CLAUDE/SETTINGS.JSON",
+      "lines": [
+        "{",
+        "  \"extraKnownMarketplaces\": {",
+        "    \"synthwerk\": { \"source\": { \"source\": \"github\", \"repo\": \"VelimirMueller/synthwerk-blueprint\" } }",
+        "  },",
+        "  \"enabledPlugins\": { \"synthwerk@synthwerk\": true }",
+        "}"
+      ]
+    },
+    {
+      "key": "renovate",
+      "type": "notes",
+      "title": "RULES FOR DEPENDENCY UPDATES (RENOVATE)",
+      "columns": 2,
+      "items": [
+        {
+          "lead": "7 days old",
+          "text": "Renovate opens an update PR only when the release is **7 days** old. This blocks a hijacked release that is pulled within days."
+        },
+        {
+          "lead": "Auto-merge: dev patches only",
+          "text": "Only patch updates of dev dependencies merge automatically, after the 7 days and green CI."
+        },
+        {
+          "lead": "Security fixes do not wait",
+          "text": "Security fixes (`vulnerabilityAlerts`) do not wait. They get the label `security`."
+        },
+        {
+          "lead": "Never automatic",
+          "text": "Majors, base images, Biome and `@synthwerk/*` packages never merge automatically."
+        }
+      ]
+    },
+    {
+      "key": "dev",
+      "type": "commands",
+      "title": "DEVELOPMENT",
+      "rows": [
+        {
+          "cmd": "just lint",
+          "text": "actionlint, zizmor, Biome."
+        },
+        {
+          "cmd": "just test",
+          "text": "node --test: Biome, golangci-lint, ruff, mypy configs and the feature-doc checker."
+        },
+        {
+          "cmd": "tools",
+          "text": "Node 24 + pnpm, Go 1.27, golangci-lint v2.14, uv (runs ruff 0.16.10, mypy 2.4.0, zizmor 1.30.1), actionlint 1.7.12, just."
+        },
+        {
+          "cmd": "tests/",
+          "text": "Tests live here. Fixtures live in `tests/fixtures/`."
+        }
+      ]
+    },
+    {
+      "key": "now",
+      "type": "notes",
+      "columns": 3,
+      "items": [
+        {
+          "lead": "Status",
+          "text": "v1.0.1, released 2026-10-09."
+        },
+        {
+          "lead": "Works",
+          "text": "ts, go, py, image, feature-doc."
+        },
+        {
+          "lead": "Next",
+          "text": "npm publish, synthwerk adoption."
+        }
+      ]
+    },
+    {
+      "key": "selftest",
+      "type": "notes",
+      "columns": 2,
+      "items": [
+        {
+          "lead": "Selftest",
+          "text": "The lint and test suites run in CI (`selftest.yml`) and locally: `just lint` and `just test`."
+        },
+        {
+          "lead": "Releases",
+          "text": "Releases and the moving `v1` tag are documented in `CHANGELOG.md`."
+        }
+      ]
+    },
+    {
+      "key": "links",
+      "type": "buttons",
+      "items": [
+        {
+          "label": "Definition of Ready",
+          "sub": "docs/process",
+          "href": "docs/process/definition-of-ready.md"
+        },
+        {
+          "label": "Definition of Done",
+          "sub": "docs/process",
+          "href": "docs/process/definition-of-done.md"
+        },
+        {
+          "label": "Caller workflows",
+          "sub": "examples/workflows/",
+          "href": "examples/workflows/"
+        },
+        {
+          "label": "Selftest",
+          "sub": "github actions",
+          "href": "https://github.com/VelimirMueller/synthwerk-blueprint/actions/workflows/selftest.yml"
+        },
+        {
+          "label": "Changelog",
+          "sub": "releases and the v1 tag",
+          "href": "CHANGELOG.md"
+        },
+        {
+          "label": "License",
+          "sub": "MIT",
+          "href": "LICENSE"
+        },
+        {
+          "label": "Plain text",
+          "sub": "show copyable commands"
+        }
+      ]
+    },
+    {
+      "key": "footer",
+      "type": "footer",
+      "studio": "VM. studio / flagship",
+      "text": "open source · look per vm-brand playbook · MIT (c) 2026 Velimir Mueller",
+      "eof": "-- EOF -- five files. one standard. --"
     }
-  ]
+  ],
+  "readme": {
+    "hero_alt": "SYNTHWERK-BLUEPRINT. Shared CI, configs and templates. The arguments already happened. Stable, v1.0.1.",
+    "items": [
+      "lead",
+      "stats",
+      "divider:what",
+      "features",
+      "what",
+      "divider:start",
+      "start",
+      "adopt12",
+      {
+        "details": "links",
+        "chip": 7,
+        "code": [
+          [
+            "bash",
+            "# 1) workflows (pick ci-ts.yml, ci-go.yml or ci-py.yml)\ncp examples/workflows/ci-ts.yml .github/workflows/ci.yml\ncp examples/workflows/feature-doc.yml .github/workflows/\ncp examples/workflows/deliver.yml .github/workflows/   # only with a Dockerfile\n\n# 2) lint config (TS / Vue)\npnpm add -D -E @biomejs/biome@2.5.15 @synthwerk/biome-config"
+          ],
+          ["json", "{ \"extends\": [\"@synthwerk/biome-config\"] }"]
+        ]
+      },
+      "divider:how",
+      "flow",
+      "gate",
+      "how",
+      "divider:usage",
+      "inside",
+      {
+        "buttons": "links",
+        "only": [1, 2, 3]
+      },
+      "adopt",
+      "skill",
+      {
+        "details": "links",
+        "chip": 7,
+        "code": [
+          [
+            "json",
+            "{\n  \"extraKnownMarketplaces\": {\n    \"synthwerk\": { \"source\": { \"source\": \"github\", \"repo\": \"VelimirMueller/synthwerk-blueprint\" } }\n  },\n  \"enabledPlugins\": { \"synthwerk@synthwerk\": true }\n}"
+          ],
+          ["text", "/plugin install synthwerk --marketplace VelimirMueller/synthwerk-blueprint"],
+          [
+            "sh",
+            "just lint   # actionlint, zizmor, Biome\njust test   # node --test: Biome, golangci-lint, ruff, mypy configs and the feature-doc checker"
+          ]
+        ]
+      },
+      "renovate",
+      "dev",
+      "divider:status",
+      "status",
+      "now",
+      "selftest",
+      {
+        "buttons": "links",
+        "only": [4, 5, 6]
+      },
+      "footer"
+    ]
+  }
 }
