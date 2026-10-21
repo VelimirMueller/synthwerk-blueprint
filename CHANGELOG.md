@@ -28,7 +28,8 @@ All notable changes to this project are documented here. Releases are tagged
 - `image.yml`: input `build-args` (one `KEY=value` per line). `COMMIT=<github.sha>`
   is now always passed, so `/readyz` reports the real commit.
 - `image.yml`: input `promote-on-tag`. A `v*` tag then does not build; it adds the
-  version tag to the digest that `main` built for the same commit. New output `image`.
+  version tag to the digest that `main` built for the same commit. New outputs
+  `image` and `commit`.
 - `examples/workflows/deliver.yml`: main deploys to dev, a `v*` tag promotes to stg
   and prd. `examples/workflows/redeploy.yml`: manual deploy of an old digest
   (rollback).

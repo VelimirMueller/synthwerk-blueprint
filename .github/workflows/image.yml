@@ -25,6 +25,7 @@
 # Outputs
 #   digest  sha256 digest of the pushed (or promoted) image. Empty when nothing was pushed.
 #   image   Image name without tag, e.g. ghcr.io/owner/repo.
+#   commit  Commit the digest was built from (pass it to deploy.yml source-commit).
 name: image
 
 on:
@@ -52,6 +53,9 @@ on:
       image:
         description: image name without tag
         value: ${{ jobs.image.outputs.image || jobs.promote.outputs.image }}
+      commit:
+        description: commit the digest was built from
+        value: ${{ jobs.image.outputs.commit || jobs.promote.outputs.commit }}
 
 permissions: {}
 
@@ -75,6 +79,7 @@ jobs:
     outputs:
       digest: ${{ steps.push.outputs.digest }}
       image: ${{ steps.name.outputs.image }}
+      commit: ${{ github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -203,6 +208,7 @@ jobs:
     outputs:
       digest: ${{ steps.promote.outputs.digest }}
       image: ${{ steps.name.outputs.image }}
+      commit: ${{ steps.promote.outputs.commit }}
     steps:
       - name: Image name
         id: name

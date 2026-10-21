@@ -44,7 +44,7 @@ jobs:
       digest: ${{ needs.image.outputs.digest }}
       service: <service> # compose service name on the host
       compose-dir: /opt/synthwerk/<service>
-      source-commit: ${{ github.sha }}
+      source-commit: ${{ needs.image.outputs.commit }}
     secrets:
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
@@ -65,7 +65,7 @@ jobs:
       digest: ${{ needs.image.outputs.digest }}
       service: <service>
       compose-dir: /opt/synthwerk/<service>
-      source-commit: ${{ github.sha }}
+      source-commit: ${{ needs.image.outputs.commit }}
     secrets:
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
@@ -88,7 +88,7 @@ jobs:
       digest: ${{ needs.image.outputs.digest }}
       service: <service>
       compose-dir: /opt/synthwerk/<service>
-      source-commit: ${{ github.sha }}
+      source-commit: ${{ needs.image.outputs.commit }}
     secrets:
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
