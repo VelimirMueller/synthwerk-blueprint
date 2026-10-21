@@ -206,6 +206,8 @@ jobs:
           IMAGE: ${{ steps.name.outputs.image }}
           TAGS: ${{ steps.meta.outputs.tags }}
         run: |
+          # On a tag push GITHUB_SHA is the tagged commit, also for an annotated tag
+          # (the tag object SHA is only in github.event.after). main tagged it sha-<commit>.
           source="$IMAGE:sha-$GITHUB_SHA"
           digest=""
           for _ in $(seq 1 50); do
