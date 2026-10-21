@@ -228,10 +228,14 @@ jobs:
         id: promote
         env:
           IMAGE: ${{ steps.name.outputs.image }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # On a tag push GITHUB_SHA is the tagged commit, also for an annotated tag
-          # (the tag object SHA is only in github.event.after). main tagged it sha-<commit>.
-          source="$IMAGE:sha-$GITHUB_SHA"
+          # Peel the tag to its commit through the API, so a lightweight and an annotated
+          # tag both give the commit that main built (and tagged sha-<commit>).
+          commit=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_REF" --jq .sha)
+          [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::cannot resolve $GITHUB_REF to a commit"; exit 1; }
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          source="$IMAGE:sha-$commit"
           digest=""
           for _ in $(seq 1 50); do
             digest=$(docker buildx imagetools inspect "$source" --format '{{.Manifest.Digest}}' 2>/dev/null) && break
@@ -252,7 +256,7 @@ jobs:
           subject: oci://${{ steps.name.outputs.image }}@${{ steps.promote.outputs.digest }}
           repo: ${{ github.repository }}
           source-ref: refs/heads/main
-          source-commit: ${{ github.sha }}
+          source-commit: ${{ steps.promote.outputs.commit }}
 
       - name: Add the version tags to the verified digest
         env:

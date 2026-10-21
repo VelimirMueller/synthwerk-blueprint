@@ -164,15 +164,15 @@ jobs:
           READY: ${{ steps.secrets.outputs.ready }}
           OUTCOME: ${{ job.status }}
         run: |
-          if [[ "$READY" != "true" ]]; then
-            state="skipped: deploy secrets missing, nothing deployed"
+          if [[ "$OUTCOME" != "success" ]]; then
+            state="failed (provenance check or deploy)"
             echo "deployed=false" >> "$GITHUB_OUTPUT"
-          elif [[ "$OUTCOME" == "success" ]]; then
+          elif [[ "$READY" != "true" ]]; then
+            state="skipped: deploy secrets missing, nothing deployed (provenance verified)"
+            echo "deployed=false" >> "$GITHUB_OUTPUT"
+          else
             state="deployed and verified"
             echo "deployed=true" >> "$GITHUB_OUTPUT"
-          else
-            state="failed"
-            echo "deployed=false" >> "$GITHUB_OUTPUT"
           fi
           {
             echo "### Deploy: $ENVIRONMENT"
