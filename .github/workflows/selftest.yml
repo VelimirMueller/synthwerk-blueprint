@@ -117,6 +117,11 @@ jobs:
           wait-timeout: "60"
           digest: ${{ env.SELFTEST_MISSING }}
 
+      - name: A still runs after the failed deploy
+        env:
+          WANT: ${{ env.SELFTEST_IMAGE }}@${{ env.SELFTEST_DIGEST_A }}
+        run: tests/deploy/assert-running.sh "$WANT"
+
       - name: Promote to B
         uses: $/actions/deploy
         with:

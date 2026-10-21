@@ -33,7 +33,7 @@ verify() {
     if [[ "$running" != "true" ]] ||
       ! docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$image_id" | grep -Fxq -- "$ref"; then
       echo "::error::container ${id:0:12} of $service does not run $ref (running=$running)"
-      docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$image_id" | sed 's/^/  has: /'
+      docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$image_id" | sed -n 's/^./  has: &/p'
       return 1
     fi
     echo "ok: container ${id:0:12} of $service runs $ref"
