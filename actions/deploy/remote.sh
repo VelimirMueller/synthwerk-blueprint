@@ -15,6 +15,7 @@ set -euo pipefail
 mode=$1 image=$2 digest=$3 service=$4 dir=$5 file=$6 timeout=$7
 ref="$image@$digest"
 
+# shellcheck disable=SC2088 # match a literal "~/", then expand it by hand
 case "$dir" in "~/"*) dir="$HOME/${dir#\~/}" ;; esac
 cd -- "$dir"
 [[ -f "$file" ]] || { echo "::error::$dir/$file does not exist on the host"; exit 1; }
