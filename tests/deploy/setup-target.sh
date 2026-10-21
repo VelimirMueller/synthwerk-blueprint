@@ -17,6 +17,7 @@ registry_image="registry:3@sha256:ddf754342cfc8acc51a56d5d0ab6af0682646186446063
 busybox_image="busybox:1.37@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e"
 docker run -d --name selftest-registry -p 127.0.0.1:5000:5000 "$registry_image" >/dev/null
 for _ in $(seq 1 30); do curl -sf http://127.0.0.1:5000/v2/ >/dev/null && break; sleep 1; done
+curl -sf http://127.0.0.1:5000/v2/ >/dev/null || { echo "::error::registry did not start"; exit 1; }
 
 image=127.0.0.1:5000/selftest/app
 # The registry answers with the digest it stores (Docker-Content-Digest).
@@ -73,6 +74,7 @@ EOF
 sudo mkdir -p /run/sshd
 sudo "$(command -v sshd)" -f "$work/sshd_config"
 for _ in $(seq 1 20); do ssh-keyscan -p 2222 127.0.0.1 >/dev/null 2>&1 && break; sleep 0.5; done
+ssh-keyscan -p 2222 127.0.0.1 >/dev/null 2>&1 || { echo "::error::sshd did not start"; exit 1; }
 
 {
   echo "SELFTEST_IMAGE=$image"

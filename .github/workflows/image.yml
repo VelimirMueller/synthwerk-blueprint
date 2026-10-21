@@ -172,7 +172,7 @@ jobs:
   promote:
     if: ${{ inputs.promote-on-tag && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     permissions:
       contents: read
       packages: write # add the version tags in GHCR

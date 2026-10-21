@@ -81,7 +81,7 @@ runs:
           fail "compose-dir must be an absolute or ~/ path, got '$COMPOSE_DIR'"
         [[ "$COMPOSE_FILE_NAME" =~ ^[A-Za-z0-9_.-]+$ ]] || fail "compose-file must be a file name, got '$COMPOSE_FILE_NAME'"
         [[ "$HOST" =~ ^[A-Za-z0-9.:-]+$ ]] || fail "host has an invalid value"
-        [[ "$PORT" =~ ^[0-9]{1,5}$ ]] || fail "port must be a number"
+        [[ "$PORT" =~ ^[0-9]{1,5}$ && "$PORT" -ge 1 && "$PORT" -le 65535 ]] || fail "port must be 1-65535"
         [[ "$SSH_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || fail "user has an invalid value"
         [[ "$WAIT_TIMEOUT" =~ ^[0-9]+$ ]] || fail "wait-timeout must be a number of seconds"
         case "$VERIFY_ONLY" in true) mode=verify ;; false) mode=deploy ;; *) fail "verify-only must be true or false" ;; esac

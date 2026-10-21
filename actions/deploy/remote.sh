@@ -26,7 +26,7 @@ verify() {
   local ids id running image_id
   ids=$("${compose[@]}" ps -q "$service")
   [[ -n "$ids" ]] || { echo "::error::no running container for service $service"; return 1; }
-  for id in $ids; do
+  while IFS= read -r id; do
     running=$(docker inspect --format '{{.State.Running}}' "$id")
     image_id=$(docker inspect --format '{{.Image}}' "$id")
     # RepoDigests holds the registry digest of every reference the image was pulled by.
@@ -37,7 +37,7 @@ verify() {
       return 1
     fi
     echo "ok: container ${id:0:12} of $service runs $ref"
-  done
+  done <<< "$ids"
 }
 
 case "$mode" in
@@ -47,9 +47,14 @@ case "$mode" in
     [[ -f compose.digest.yaml ]] && cp compose.digest.yaml compose.digest.prev.yaml
     printf 'services:\n  %s:\n    image: %s\n' "$service" "$ref" > compose.digest.yaml.tmp
     mv compose.digest.yaml.tmp compose.digest.yaml
-    "${compose[@]}" up --detach --no-deps --no-build --pull never --wait --wait-timeout "$timeout" "$service"
+    if ! "${compose[@]}" up --detach --no-deps --no-build --pull never --wait --wait-timeout "$timeout" "$service" ||
+      ! verify; then
+      # Keep the pin on the last good digest, so a manual `up` does not start the bad one.
+      [[ -f compose.digest.prev.yaml ]] && cp compose.digest.prev.yaml compose.digest.yaml
+      echo "::error::deploy of $ref failed; compose.digest.yaml points to the previous digest again"
+      exit 1
+    fi
     printf '%s %s\n' "$(date -u +%FT%TZ)" "$ref" >> deploy.log
-    verify
     ;;
   verify)
     [[ -f compose.digest.yaml ]] || { echo "::error::no compose.digest.yaml in $dir: nothing was deployed"; exit 1; }
