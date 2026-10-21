@@ -27,6 +27,7 @@
 5. `docker compose -f <compose-file> -f compose.digest.yaml up --detach --no-deps --wait <service>`.
 6. Append a line to `deploy.log`.
 7. Verify: every running container of the service has `<image>@<digest>` in the `RepoDigests` of its image. Else the job fails.
+8. When step 5 or 7 fails: restore `compose.digest.prev.yaml`, start the previous digest again, and fail the job.
 
 - The selftest (`selftest.yml`, job `deploy`) runs this against a throwaway target on the runner: a local registry, an sshd and a compose project. It deploys A, checks that a wrong digest and a missing digest fail, promotes to B and rolls back to A.
 

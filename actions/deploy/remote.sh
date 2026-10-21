@@ -49,9 +49,15 @@ case "$mode" in
     mv compose.digest.yaml.tmp compose.digest.yaml
     if ! "${compose[@]}" up --detach --no-deps --no-build --pull never --wait --wait-timeout "$timeout" "$service" ||
       ! verify; then
-      # Keep the pin on the last good digest, so a manual `up` does not start the bad one.
-      if [[ -f compose.digest.prev.yaml ]]; then cp compose.digest.prev.yaml compose.digest.yaml; fi
-      echo "::error::deploy of $ref failed; compose.digest.yaml points to the previous digest again"
+      # Put the last good digest back: restore the pin and start it again (best effort).
+      if [[ -f compose.digest.prev.yaml ]]; then
+        cp compose.digest.prev.yaml compose.digest.yaml
+        "${compose[@]}" up --detach --no-deps --no-build --pull never --wait --wait-timeout "$timeout" "$service" ||
+          echo "::warning::the previous digest did not start again either; check the host"
+        echo "::error::deploy of $ref failed; the previous digest is pinned and started again"
+      else
+        echo "::error::deploy of $ref failed; there is no previous digest to go back to"
+      fi
       exit 1
     fi
     printf '%s %s\n' "$(date -u +%FT%TZ)" "$ref" >> deploy.log
