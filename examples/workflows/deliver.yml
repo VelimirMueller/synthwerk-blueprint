@@ -1,6 +1,9 @@
 # Caller example (repos with a Dockerfile). Copy to .github/workflows/deliver.yml.
-# Pull request: build, SBOM, Trivy scan. Push to main or a v* tag: also push to
-# ghcr.io and sign with cosign.
+# Pull request: build, SBOM, Trivy scan. Push to main: also push to ghcr.io, sign
+# with cosign and deploy that digest to dev. Push of a v* tag: no build; promote the
+# digest that main built for the same commit to stg, then prd.
+# Without the DEPLOY_* secrets on an environment, its deploy job is skipped with a
+# notice. Setup: docs/conventions/deploy.md. Rollback: redeploy.yml.
 name: deliver
 
 on:
@@ -23,3 +26,58 @@ jobs:
       packages: write
       id-token: write
     uses: VelimirMueller/synthwerk-blueprint/.github/workflows/image.yml@v1
+    with:
+      promote-on-tag: true
+
+  dev:
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions: {}
+    uses: VelimirMueller/synthwerk-blueprint/.github/workflows/deploy.yml@v1
+    with:
+      environment: dev
+      image: ${{ needs.image.outputs.image }}
+      digest: ${{ needs.image.outputs.digest }}
+      service: <service> # compose service name on the host
+      compose-dir: /opt/synthwerk/<service>
+    secrets:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+
+  stg:
+    needs: image
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    permissions: {}
+    uses: VelimirMueller/synthwerk-blueprint/.github/workflows/deploy.yml@v1
+    with:
+      environment: stg
+      image: ${{ needs.image.outputs.image }}
+      digest: ${{ needs.image.outputs.digest }}
+      service: <service>
+      compose-dir: /opt/synthwerk/<service>
+    secrets:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+
+  # Same digest, only after stg deployed and verified it.
+  # Manual approval: required reviewers on the prd environment.
+  prd:
+    needs: [image, stg]
+    if: needs.stg.outputs.deployed == 'true'
+    permissions: {}
+    uses: VelimirMueller/synthwerk-blueprint/.github/workflows/deploy.yml@v1
+    with:
+      environment: prd
+      image: ${{ needs.image.outputs.image }}
+      digest: ${{ needs.image.outputs.digest }}
+      service: <service>
+      compose-dir: /opt/synthwerk/<service>
+    secrets:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}

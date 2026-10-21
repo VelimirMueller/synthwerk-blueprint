@@ -50,3 +50,113 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: just lint
       - run: just test
+
+  # actions/deploy against a throwaway target on this runner: a local registry,
+  # an sshd and a compose project. Proves: the running digest equals the deployed
+  # digest, a promote and a rollback swap it, and a wrong or missing digest fails.
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Start the throwaway target
+        run: tests/deploy/setup-target.sh
+
+      - name: Deploy A
+        uses: $/actions/deploy
+        with:
+          image: ${{ env.SELFTEST_IMAGE }}
+          service: app
+          compose-dir: ${{ env.SELFTEST_DIR }}
+          host: 127.0.0.1
+          port: "2222"
+          user: ${{ env.SELFTEST_USER }}
+          ssh-key: ${{ env.SELFTEST_KEY }}
+          known-hosts: ${{ env.SELFTEST_KNOWN_HOSTS }}
+          wait-timeout: "60"
+          digest: ${{ env.SELFTEST_DIGEST_A }}
+      - name: A runs (checked outside the action)
+        env:
+          WANT: ${{ env.SELFTEST_IMAGE }}@${{ env.SELFTEST_DIGEST_A }}
+        run: tests/deploy/assert-running.sh "$WANT"
+
+      - name: Verify with the wrong digest (must fail)
+        id: wrong
+        continue-on-error: true
+        uses: $/actions/deploy
+        with:
+          image: ${{ env.SELFTEST_IMAGE }}
+          service: app
+          compose-dir: ${{ env.SELFTEST_DIR }}
+          host: 127.0.0.1
+          port: "2222"
+          user: ${{ env.SELFTEST_USER }}
+          ssh-key: ${{ env.SELFTEST_KEY }}
+          known-hosts: ${{ env.SELFTEST_KNOWN_HOSTS }}
+          wait-timeout: "60"
+          digest: ${{ env.SELFTEST_DIGEST_B }}
+          verify-only: "true"
+
+      - name: Deploy a digest that does not exist (must fail)
+        id: missing
+        continue-on-error: true
+        uses: $/actions/deploy
+        with:
+          image: ${{ env.SELFTEST_IMAGE }}
+          service: app
+          compose-dir: ${{ env.SELFTEST_DIR }}
+          host: 127.0.0.1
+          port: "2222"
+          user: ${{ env.SELFTEST_USER }}
+          ssh-key: ${{ env.SELFTEST_KEY }}
+          known-hosts: ${{ env.SELFTEST_KNOWN_HOSTS }}
+          wait-timeout: "60"
+          digest: ${{ env.SELFTEST_MISSING }}
+
+      - name: Promote to B
+        uses: $/actions/deploy
+        with:
+          image: ${{ env.SELFTEST_IMAGE }}
+          service: app
+          compose-dir: ${{ env.SELFTEST_DIR }}
+          host: 127.0.0.1
+          port: "2222"
+          user: ${{ env.SELFTEST_USER }}
+          ssh-key: ${{ env.SELFTEST_KEY }}
+          known-hosts: ${{ env.SELFTEST_KNOWN_HOSTS }}
+          wait-timeout: "60"
+          digest: ${{ env.SELFTEST_DIGEST_B }}
+      - name: B runs
+        env:
+          WANT: ${{ env.SELFTEST_IMAGE }}@${{ env.SELFTEST_DIGEST_B }}
+        run: tests/deploy/assert-running.sh "$WANT"
+
+      - name: Roll back to A (by digest, no build)
+        uses: $/actions/deploy
+        with:
+          image: ${{ env.SELFTEST_IMAGE }}
+          service: app
+          compose-dir: ${{ env.SELFTEST_DIR }}
+          host: 127.0.0.1
+          port: "2222"
+          user: ${{ env.SELFTEST_USER }}
+          ssh-key: ${{ env.SELFTEST_KEY }}
+          known-hosts: ${{ env.SELFTEST_KNOWN_HOSTS }}
+          wait-timeout: "60"
+          digest: ${{ env.SELFTEST_DIGEST_A }}
+      - name: A runs again
+        env:
+          WANT: ${{ env.SELFTEST_IMAGE }}@${{ env.SELFTEST_DIGEST_A }}
+        run: tests/deploy/assert-running.sh "$WANT"
+
+      - name: The failure cases failed
+        env:
+          WRONG: ${{ steps.wrong.outcome }}
+          MISSING: ${{ steps.missing.outcome }}
+        run: |
+          echo "wrong digest: $WRONG, missing digest: $MISSING"
+          [[ "$WRONG" == "failure" && "$MISSING" == "failure" ]]

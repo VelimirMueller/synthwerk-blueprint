@@ -1,0 +1,148 @@
+# Reusable deploy workflow: one image, by digest, to one environment.
+# Build once (image.yml), then promote the same digest: dev, stg, prd.
+# A rollback calls this workflow with the previous digest. It never rebuilds.
+#
+# Target: a Docker host reached over SSH. The host owns <compose-dir>/<compose-file>;
+# the deploy pins the image as <image>@<digest> in compose.digest.yaml, runs
+# `docker compose up --wait` and fails unless the running container has that digest.
+# Host contract and setup: docs/conventions/deploy.md.
+#
+# Inputs
+#   environment   GitHub environment (dev, stg, prd). Its protection rules apply.   required
+#   image         Image without tag, e.g. ghcr.io/velimirmueller/synthwerk-vision.   required
+#   digest        sha256:<64 hex>, e.g. the digest output of image.yml.             required
+#   service       Compose service name on the host.                                 required
+#   compose-dir   Compose project directory on the host.                            required
+#   compose-file  Compose file in compose-dir.                      default: "compose.yaml"
+#   ssh-port      SSH port of the host.                             default: 22
+#
+# Secrets (set them on the GitHub environment; the caller passes them through)
+#   DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS
+#   When one is missing, the job deploys nothing, writes a notice and sets
+#   deployed=false. It does not fail.
+#
+# Caller permissions: none.
+#
+# Outputs
+#   deployed  "true" when the digest was deployed and verified, "false" when skipped.
+name: deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      image:
+        type: string
+        required: true
+      digest:
+        type: string
+        required: true
+      service:
+        type: string
+        required: true
+      compose-dir:
+        type: string
+        required: true
+      compose-file:
+        type: string
+        default: "compose.yaml"
+      ssh-port:
+        type: number
+        default: 22
+    secrets:
+      DEPLOY_HOST:
+        required: false
+      DEPLOY_USER:
+        required: false
+      DEPLOY_SSH_KEY:
+        required: false
+      DEPLOY_KNOWN_HOSTS:
+        required: false
+    outputs:
+      deployed:
+        description: '"true" when the digest was deployed and verified, "false" when skipped'
+        value: ${{ jobs.deploy.outputs.deployed }}
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: {}
+    environment:
+      name: ${{ inputs.environment }}
+    # One deploy per repo and environment at a time; never cancel a running deploy.
+    concurrency:
+      group: deploy-${{ github.repository }}-${{ inputs.environment }}
+      cancel-in-progress: false
+    outputs:
+      deployed: ${{ steps.result.outputs.deployed }}
+    steps:
+      - name: Check deploy secrets
+        id: secrets
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          HAS_HOST: ${{ secrets.DEPLOY_HOST != '' }}
+          HAS_USER: ${{ secrets.DEPLOY_USER != '' }}
+          HAS_KEY: ${{ secrets.DEPLOY_SSH_KEY != '' }}
+          HAS_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS != '' }}
+        run: |
+          missing=()
+          [[ "$HAS_HOST" == "true" ]] || missing+=(DEPLOY_HOST)
+          [[ "$HAS_USER" == "true" ]] || missing+=(DEPLOY_USER)
+          [[ "$HAS_KEY" == "true" ]] || missing+=(DEPLOY_SSH_KEY)
+          [[ "$HAS_KNOWN_HOSTS" == "true" ]] || missing+=(DEPLOY_KNOWN_HOSTS)
+          if ((${#missing[@]})); then
+            echo "::notice title=deploy skipped::Environment $ENVIRONMENT has no ${missing[*]}. Nothing was deployed."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # $/ = the blueprint at the same commit as this workflow (caller pins @v1 or a SHA).
+      - name: Deploy and verify the digest
+        if: steps.secrets.outputs.ready == 'true'
+        uses: $/actions/deploy
+        with:
+          image: ${{ inputs.image }}
+          digest: ${{ inputs.digest }}
+          service: ${{ inputs.service }}
+          compose-dir: ${{ inputs.compose-dir }}
+          compose-file: ${{ inputs.compose-file }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          port: ${{ inputs.ssh-port }}
+          user: ${{ secrets.DEPLOY_USER }}
+          ssh-key: ${{ secrets.DEPLOY_SSH_KEY }}
+          known-hosts: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+
+      - name: Result
+        id: result
+        if: always()
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          REF: ${{ inputs.image }}@${{ inputs.digest }}
+          READY: ${{ steps.secrets.outputs.ready }}
+          OUTCOME: ${{ job.status }}
+        run: |
+          if [[ "$READY" != "true" ]]; then
+            state="skipped: deploy secrets missing, nothing deployed"
+            echo "deployed=false" >> "$GITHUB_OUTPUT"
+          elif [[ "$OUTCOME" == "success" ]]; then
+            state="deployed and verified"
+            echo "deployed=true" >> "$GITHUB_OUTPUT"
+          else
+            state="failed"
+            echo "deployed=false" >> "$GITHUB_OUTPUT"
+          fi
+          {
+            echo "### Deploy: $ENVIRONMENT"
+            echo "- Image: \`$REF\`"
+            echo "- Result: $state"
+          } >> "$GITHUB_STEP_SUMMARY"

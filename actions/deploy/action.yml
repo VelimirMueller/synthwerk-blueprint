@@ -1,0 +1,113 @@
+# Deploy one image by digest to a docker compose host over SSH, then check that
+# the running container has exactly that digest. Used by .github/workflows/deploy.yml;
+# the blueprint selftest runs it against a throwaway SSH + Docker target.
+#
+# The host needs: Docker with the compose plugin, <compose-dir>/<compose-file> that
+# defines <service>, and pull access to <image> (public package or `docker login`).
+name: deploy
+description: Deploy <image>@<digest> to a docker compose host over SSH and verify the running digest.
+
+inputs:
+  image:
+    description: Image without tag or digest, e.g. ghcr.io/velimirmueller/synthwerk-vision.
+    required: true
+  digest:
+    description: Image digest, sha256:<64 hex>.
+    required: true
+  service:
+    description: Compose service name on the host.
+    required: true
+  compose-dir:
+    description: Absolute path (or ~/path) of the compose project on the host.
+    required: true
+  compose-file:
+    description: Compose file in compose-dir that defines the service.
+    default: compose.yaml
+  host:
+    description: SSH host name or IP.
+    required: true
+  port:
+    description: SSH port.
+    default: "22"
+  user:
+    description: SSH user (must be allowed to run docker).
+    required: true
+  ssh-key:
+    description: Private SSH key for the user.
+    required: true
+  known-hosts:
+    description: known_hosts lines for the host. Host key checking is never turned off.
+    required: true
+  wait-timeout:
+    description: Seconds `docker compose up --wait` waits for running / healthy.
+    default: "120"
+  verify-only:
+    description: "true = deploy nothing, only check that the running digest equals digest."
+    default: "false"
+
+outputs:
+  ref:
+    description: The deployed reference, <image>@<digest>.
+    value: ${{ steps.run.outputs.ref }}
+
+runs:
+  using: composite
+  steps:
+    - name: Deploy by digest
+      id: run
+      shell: bash --noprofile --norc -euo pipefail {0}
+      env:
+        IMAGE: ${{ inputs.image }}
+        DIGEST: ${{ inputs.digest }}
+        SERVICE: ${{ inputs.service }}
+        COMPOSE_DIR: ${{ inputs.compose-dir }}
+        COMPOSE_FILE_NAME: ${{ inputs.compose-file }}
+        HOST: ${{ inputs.host }}
+        PORT: ${{ inputs.port }}
+        SSH_USER: ${{ inputs.user }}
+        SSH_KEY: ${{ inputs.ssh-key }}
+        KNOWN_HOSTS: ${{ inputs.known-hosts }}
+        WAIT_TIMEOUT: ${{ inputs.wait-timeout }}
+        VERIFY_ONLY: ${{ inputs.verify-only }}
+      run: |
+        fail() { echo "::error title=deploy::$1"; exit 1; }
+        # Strict shapes: these values end up in the remote command line.
+        [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "digest must be sha256:<64 hex>, got '$DIGEST'"
+        [[ "$IMAGE" =~ ^[a-z0-9][a-z0-9._:/-]*$ && "${IMAGE##*/}" != *:* ]] ||
+          fail "image must be a lowercase name without tag or digest, got '$IMAGE'"
+        [[ "$SERVICE" =~ ^[a-z0-9][a-z0-9_.-]*$ ]] || fail "service has an invalid name: '$SERVICE'"
+        dir_re='^(/|~/)[A-Za-z0-9_./-]*$'
+        [[ "$COMPOSE_DIR" =~ $dir_re && "$COMPOSE_DIR" != *..* ]] ||
+          fail "compose-dir must be an absolute or ~/ path, got '$COMPOSE_DIR'"
+        [[ "$COMPOSE_FILE_NAME" =~ ^[A-Za-z0-9_.-]+$ ]] || fail "compose-file must be a file name, got '$COMPOSE_FILE_NAME'"
+        [[ "$HOST" =~ ^[A-Za-z0-9.:-]+$ ]] || fail "host has an invalid value"
+        [[ "$PORT" =~ ^[0-9]{1,5}$ ]] || fail "port must be a number"
+        [[ "$SSH_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || fail "user has an invalid value"
+        [[ "$WAIT_TIMEOUT" =~ ^[0-9]+$ ]] || fail "wait-timeout must be a number of seconds"
+        case "$VERIFY_ONLY" in true) mode=verify ;; false) mode=deploy ;; *) fail "verify-only must be true or false" ;; esac
+        [[ -n "$SSH_KEY" && -n "$KNOWN_HOSTS" ]] || fail "ssh-key and known-hosts must not be empty"
+
+        ssh_dir=$(mktemp -d "$RUNNER_TEMP/deploy-ssh.XXXXXX")
+        trap 'rm -rf "$ssh_dir"' EXIT
+        (umask 077 && printf '%s\n' "$SSH_KEY" > "$ssh_dir/key" && printf '%s\n' "$KNOWN_HOSTS" > "$ssh_dir/known_hosts")
+        cat > "$ssh_dir/config" <<EOF
+        Host deploy-target
+          HostName $HOST
+          Port $PORT
+          User $SSH_USER
+          IdentityFile $ssh_dir/key
+          IdentitiesOnly yes
+          UserKnownHostsFile $ssh_dir/known_hosts
+          GlobalKnownHostsFile /dev/null
+          StrictHostKeyChecking yes
+          BatchMode yes
+          ConnectTimeout 15
+          ServerAliveInterval 15
+        EOF
+
+        ref="$IMAGE@$DIGEST"
+        echo "ref=$ref" >> "$GITHUB_OUTPUT"
+        echo "$mode $ref -> $SSH_USER@$HOST:$COMPOSE_DIR ($SERVICE)"
+        ssh -F "$ssh_dir/config" deploy-target bash -s -- \
+          "$mode" "$IMAGE" "$DIGEST" "$SERVICE" "$COMPOSE_DIR" "$COMPOSE_FILE_NAME" "$WAIT_TIMEOUT" \
+          < "$GITHUB_ACTION_PATH/remote.sh"

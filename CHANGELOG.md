@@ -3,10 +3,28 @@
 All notable changes to this project are documented here. Releases are tagged
 `v<version>`; the moving `v1` tag follows minor and patch releases.
 
-## Unreleased
+## 1.1.0 - 2026-10-21
 
 ### Added
 
+- `.github/workflows/deploy.yml`: reusable deploy of one image by digest to one
+  GitHub environment. It reaches a Docker host over SSH, pins
+  `<image>@<digest>` in `compose.digest.yaml`, runs `docker compose up --wait` and
+  fails unless the running container has that digest. Without the `DEPLOY_*`
+  secrets it skips with a notice (synthwerk#27).
+- `actions/deploy`: the deploy and verify step, also usable on its own.
+- `image.yml`: input `build-args` (one `KEY=value` per line). `COMMIT=<github.sha>`
+  is now always passed, so `/readyz` reports the real commit.
+- `image.yml`: input `promote-on-tag`. A `v*` tag then does not build; it adds the
+  version tag to the digest that `main` built for the same commit. New output `image`.
+- `examples/workflows/deliver.yml`: main deploys to dev, a `v*` tag promotes to stg
+  and prd. `examples/workflows/redeploy.yml`: manual deploy of an old digest
+  (rollback).
+- `docs/conventions/deploy.md`: flow, host contract, environment secrets, rollback.
+- `selftest.yml`, job `deploy`: runs `actions/deploy` against a throwaway SSH +
+  Docker target on the runner. A wrong or missing digest must fail.
+- `.github/actionlint.yaml`: ignore the self-repository syntax (`uses: $/…`), which
+  actionlint 1.7.12 does not know yet.
 - `docs/conventions/python-service.md`: conventions for Python services:
   `/healthz` and `/readyz`, OpenTelemetry setup, JSON logs, env names, and why
   Python services skip the outbox for now. Includes a checklist for a new
