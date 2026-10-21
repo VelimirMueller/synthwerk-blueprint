@@ -3,6 +3,15 @@
 All notable changes to this project are documented here. Releases are tagged
 `v<version>`; the moving `v1` tag follows minor and patch releases.
 
+## Unreleased
+
+### Added
+
+- `docs/conventions/python-service.md`: conventions for Python services:
+  `/healthz` and `/readyz`, OpenTelemetry setup, JSON logs, env names, and why
+  Python services skip the outbox for now. Includes a checklist for a new
+  service (synthwerk#71).
+
 ## 1.0.1 - 2026-10-09
 
 ### Fixed
