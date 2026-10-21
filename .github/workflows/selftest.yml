@@ -160,3 +160,6 @@ jobs:
         run: |
           echo "wrong digest: $WRONG, missing digest: $MISSING"
           [[ "$WRONG" == "failure" && "$MISSING" == "failure" ]]
+      - name: sshd log
+        if: failure()
+        run: sudo cat "$RUNNER_TEMP/deploy-selftest/sshd.log" || true

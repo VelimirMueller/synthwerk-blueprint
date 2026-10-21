@@ -68,11 +68,12 @@ PasswordAuthentication no
 KbdInteractiveAuthentication no
 PubkeyAuthentication yes
 StrictModes no
-UsePAM no
+# PAM lets the runner user in although its password is locked.
+UsePAM yes
 PidFile $work/sshd.pid
 EOF
 sudo mkdir -p /run/sshd
-sudo "$(command -v sshd)" -f "$work/sshd_config"
+sudo "$(command -v sshd)" -f "$work/sshd_config" -E "$work/sshd.log"
 for _ in $(seq 1 20); do ssh-keyscan -p 2222 127.0.0.1 >/dev/null 2>&1 && break; sleep 0.5; done
 ssh-keyscan -p 2222 127.0.0.1 >/dev/null 2>&1 || { echo "::error::sshd did not start"; exit 1; }
 
