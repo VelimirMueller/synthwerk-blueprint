@@ -15,13 +15,21 @@
 #   compose-dir   Compose project directory on the host.                            required
 #   compose-file  Compose file in compose-dir.                      default: "compose.yaml"
 #   ssh-port      SSH port of the host.                             default: 22
+#   source-ref    Ref the image was built on (provenance check).    default: "refs/heads/main"
+#   source-commit Commit the image was built from. Empty = any commit on source-ref.
+#                 deliver.yml passes github.sha; a rollback leaves it empty. default: ""
+#
+# Provenance: before anything else the job runs actions/verify-provenance. The digest
+# must have a build provenance attestation signed by the blueprint image.yml for the
+# caller repo, source-ref and (when set) source-commit. Else the job fails, also when
+# the deploy secrets are missing.
 #
 # Secrets (set them on the GitHub environment; the caller passes them through)
 #   DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS
 #   When one is missing, the job deploys nothing, writes a notice and sets
 #   deployed=false. It does not fail.
 #
-# Caller permissions: none.
+# Caller permissions: contents: read, attestations: read, packages: read.
 #
 # Outputs
 #   deployed  "true" when the digest was deployed and verified, "false" when skipped.
@@ -51,6 +59,12 @@ on:
       ssh-port:
         type: number
         default: 22
+      source-ref:
+        type: string
+        default: "refs/heads/main"
+      source-commit:
+        type: string
+        default: ""
     secrets:
       DEPLOY_HOST:
         required: false
@@ -75,7 +89,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    permissions: {}
+    permissions:
+      contents: read
+      attestations: read # verify the build provenance of the digest
+      packages: read # read the image manifest from GHCR
     environment:
       name: ${{ inputs.environment }}
     # One deploy per repo and environment at a time; never cancel a running deploy.
@@ -85,6 +102,22 @@ jobs:
     outputs:
       deployed: ${{ steps.result.outputs.deployed }}
     steps:
+      - name: Log in to GHCR
+        if: startsWith(inputs.image, 'ghcr.io/')
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Verify build provenance
+        uses: $/actions/verify-provenance
+        with:
+          subject: oci://${{ inputs.image }}@${{ inputs.digest }}
+          repo: ${{ github.repository }}
+          source-ref: ${{ inputs.source-ref }}
+          source-commit: ${{ inputs.source-commit }}
+
       - name: Check deploy secrets
         id: secrets
         env:

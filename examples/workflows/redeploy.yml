@@ -20,7 +20,11 @@ permissions: {}
 
 jobs:
   deploy:
-    permissions: {}
+    # The digest must still carry build provenance from a main build of this repo.
+    permissions:
+      contents: read
+      attestations: read
+      packages: read
     uses: VelimirMueller/synthwerk-blueprint/.github/workflows/deploy.yml@v1
     with:
       environment: ${{ inputs.environment }}

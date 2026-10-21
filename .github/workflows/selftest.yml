@@ -168,3 +168,89 @@ jobs:
       - name: sshd log
         if: failure()
         run: sudo cat "$RUNNER_TEMP/deploy-selftest/sshd.log" || true
+
+  # actions/verify-provenance, the gate before a promote or a deploy. This job attests
+  # one file itself, then checks: that file with this job's identity passes; a subject
+  # without an attestation, a subject not signed by image.yml, and a wrong commit or
+  # ref fail.
+  provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write # sign the test attestation
+      attestations: write # store and read the test attestation
+    env:
+      SELF_SIGNER: ${{ github.repository }}/.github/workflows/selftest.yml
+    steps:
+      - name: Make two subjects
+        run: |
+          head -c 64 /dev/urandom > "$RUNNER_TEMP/built.bin"
+          head -c 64 /dev/urandom > "$RUNNER_TEMP/foreign.bin"
+          echo "SUBJECT_BUILT=$RUNNER_TEMP/built.bin" >> "$GITHUB_ENV"
+          echo "SUBJECT_FOREIGN=$RUNNER_TEMP/foreign.bin" >> "$GITHUB_ENV"
+      - name: Attest the built subject
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ env.SUBJECT_BUILT }}
+          show-summary: false
+
+      - name: Built subject, right signer, ref and commit (must pass)
+        uses: $/actions/verify-provenance
+        with:
+          subject: ${{ env.SUBJECT_BUILT }}
+          repo: ${{ github.repository }}
+          signer-workflow: ${{ env.SELF_SIGNER }}
+          source-ref: ${{ github.ref }}
+          source-commit: ${{ github.sha }}
+
+      - name: Not signed by image.yml (must fail)
+        id: signer
+        continue-on-error: true
+        uses: $/actions/verify-provenance
+        with:
+          subject: ${{ env.SUBJECT_BUILT }}
+          repo: ${{ github.repository }}
+          source-ref: ${{ github.ref }}
+          source-commit: ${{ github.sha }}
+
+      - name: No attestation (must fail)
+        id: foreign
+        continue-on-error: true
+        uses: $/actions/verify-provenance
+        with:
+          subject: ${{ env.SUBJECT_FOREIGN }}
+          repo: ${{ github.repository }}
+          signer-workflow: ${{ env.SELF_SIGNER }}
+          source-ref: ${{ github.ref }}
+
+      - name: Wrong commit (must fail)
+        id: commit
+        continue-on-error: true
+        uses: $/actions/verify-provenance
+        with:
+          subject: ${{ env.SUBJECT_BUILT }}
+          repo: ${{ github.repository }}
+          signer-workflow: ${{ env.SELF_SIGNER }}
+          source-ref: ${{ github.ref }}
+          source-commit: "0000000000000000000000000000000000000000"
+
+      - name: Wrong ref (must fail)
+        id: ref
+        continue-on-error: true
+        uses: $/actions/verify-provenance
+        with:
+          subject: ${{ env.SUBJECT_BUILT }}
+          repo: ${{ github.repository }}
+          signer-workflow: ${{ env.SELF_SIGNER }}
+          source-ref: refs/heads/selftest-not-a-branch
+
+      - name: The failure cases failed
+        env:
+          SIGNER: ${{ steps.signer.outcome }}
+          FOREIGN: ${{ steps.foreign.outcome }}
+          COMMIT: ${{ steps.commit.outcome }}
+          REF: ${{ steps.ref.outcome }}
+        run: |
+          echo "signer: $SIGNER, foreign: $FOREIGN, commit: $COMMIT, ref: $REF"
+          [[ "$SIGNER" == failure && "$FOREIGN" == failure && "$COMMIT" == failure && "$REF" == failure ]]

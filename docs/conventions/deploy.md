@@ -13,13 +13,16 @@
 | Push of tag `vX.Y.Z` | `image.yml` with `promote-on-tag: true` does not build. It finds `sha-<commit>` from the main build and adds the version tag to the same digest. | `stg`, then `prd` (after `stg` passed and a reviewer approved). |
 | Manual (`redeploy.yml`) | None. | Any environment, any existing digest. This is the rollback. |
 
+- Every digest that `image.yml` pushes gets a build provenance attestation (`actions/attest-build-provenance`), bound to the caller repo, ref and commit.
 - `examples/workflows/deliver.yml` and `examples/workflows/redeploy.yml` show the callers.
+- The tag job promotes only a digest whose provenance says: built by the blueprint `image.yml`, this repo, `refs/heads/main`, the tagged commit. The `sha-<commit>` tag alone is not trusted.
 - The tag job waits up to 25 minutes for the main build of the same commit. A tag on a commit that was never built on `main` fails.
 
 ## 2. What a deploy does
 
 `.github/workflows/deploy.yml` runs one job in the GitHub environment named by `environment`. The job uses `actions/deploy`:
 
+1. Verify build provenance (`actions/verify-provenance`, `gh attestation verify`): the digest must be attested by the blueprint `image.yml` for this repo on `source-ref` (default `refs/heads/main`) and, when given, `source-commit`. Else the job fails, also without deploy secrets.
 1. Check the input shapes (`digest` must be `sha256:<64 hex>`).
 2. SSH to the host with the key and the `known_hosts` lines. Host key checking stays on.
 3. On the host, in `compose-dir`: `docker pull <image>@<digest>`. A digest that does not exist fails here and changes nothing.
@@ -29,6 +32,8 @@
 7. Verify: every running container of the service has `<image>@<digest>` in the `RepoDigests` of its image. Else the job fails.
 8. When step 5 or 7 fails: restore `compose.digest.prev.yaml`, start the previous digest again, and fail the job.
 
+- Caller permissions: the `image` job needs `attestations: write`; each deploy job needs `contents: read`, `attestations: read`, `packages: read`.
+- The selftest job `provenance` attests a file, then checks that a subject without an attestation, a subject not signed by `image.yml`, a wrong commit and a wrong ref fail.
 - The selftest (`selftest.yml`, job `deploy`) runs this against a throwaway target on the runner: a local registry, an sshd and a compose project. It deploys A, checks that a wrong digest and a missing digest fail, promotes to B and rolls back to A.
 
 ## 3. Host contract

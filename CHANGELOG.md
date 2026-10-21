@@ -5,6 +5,12 @@ All notable changes to this project are documented here. Releases are tagged
 
 ## 1.1.0 - 2026-10-21
 
+### Changed (callers must act)
+
+- `image.yml` callers must grant `attestations: write` (next to `contents: read`,
+  `packages: write`, `id-token: write`). Without it GitHub refuses to start the
+  workflow. Update the caller in the same step as the `v1` move.
+
 ### Added
 
 - `.github/workflows/deploy.yml`: reusable deploy of one image by digest to one
@@ -13,6 +19,12 @@ All notable changes to this project are documented here. Releases are tagged
   fails unless the running container has that digest. Without the `DEPLOY_*`
   secrets it skips with a notice (synthwerk#27).
 - `actions/deploy`: the deploy and verify step, also usable on its own.
+- `image.yml`: every pushed digest gets a build provenance attestation
+  (`actions/attest-build-provenance`). The digest output comes from the push
+  itself, not from a later read of the tag.
+- `actions/verify-provenance`: `gh attestation verify` with signer workflow
+  (blueprint `image.yml`), repo, source ref and commit. `deploy.yml` and the tag
+  promote fail when it fails.
 - `image.yml`: input `build-args` (one `KEY=value` per line). `COMMIT=<github.sha>`
   is now always passed, so `/readyz` reports the real commit.
 - `image.yml`: input `promote-on-tag`. A `v*` tag then does not build; it adds the

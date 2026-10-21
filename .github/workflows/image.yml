@@ -7,16 +7,20 @@
 #   build-args   Extra build args, one KEY=value per line.          default: ""
 #                COMMIT=<github.sha> is always passed first; a line here overrides it.
 #   promote-on-tag  true = a v* tag push does not build. It finds the image that the
-#                main build pushed for the same commit (tag sha-<commit>), adds the
-#                version tags to that digest and outputs it. Build once, promote by
-#                digest. Waits up to 25 minutes for the main build.  default: false
+#                main build pushed for the same commit (tag sha-<commit>), checks its
+#                build provenance (signed by this workflow, caller repo, refs/heads/main,
+#                same commit), adds the version tags to that digest and outputs it.
+#                Build once, promote by digest. Waits up to 25 minutes.  default: false
 #
 # Push rule: the image goes to ghcr.io only on a push to main or to a v* tag.
 # Pull requests build, write the SBOM and scan. They never push or sign.
 # The pushed image is the same local image that Trivy scanned.
 #
+# Every pushed digest gets a build provenance attestation (actions/attest-build-provenance),
+# so deploy.yml and the tag promote can prove that this workflow built it.
+#
 # Caller permissions (GitHub checks them at start, also on pull requests):
-#   contents: read, packages: write, id-token: write
+#   contents: read, packages: write, id-token: write, attestations: write
 #
 # Outputs
 #   digest  sha256 digest of the pushed (or promoted) image. Empty when nothing was pushed.
@@ -63,7 +67,8 @@ jobs:
     permissions:
       contents: read
       packages: write # push to GHCR
-      id-token: write # cosign keyless signing
+      id-token: write # cosign keyless signing, provenance attestation
+      attestations: write # build provenance attestation
     env:
       PUSH: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
       SCAN_REF: ci-local/image:scan
@@ -139,9 +144,19 @@ jobs:
         env:
           IMAGE: ${{ steps.name.outputs.image }}
         run: |
-          docker push --all-tags "$IMAGE"
           # type=sha,format=long always exists, also when no branch or semver tag applies.
-          digest=$(docker buildx imagetools inspect "$IMAGE:sha-$GITHUB_SHA" --format '{{.Manifest.Digest}}')
+          # Take the digest from the registry's answer to this push, not from a later
+          # read of the (mutable) tag.
+          out=$(docker push "$IMAGE:sha-$GITHUB_SHA")
+          echo "$out"
+          digest=$(sed -n 's/^.*: digest: \(sha256:[0-9a-f]\{64\}\) size: .*$/\1/p' <<< "$out" | tail -n 1)
+          if [[ -z "$digest" ]]; then
+            # Fallback: the push also records the digest on the local image.
+            digest=$(docker image inspect "$IMAGE:sha-$GITHUB_SHA" --format '{{range .RepoDigests}}{{println .}}{{end}}' |
+              sed -n "s|^$IMAGE@||p" | head -n 1)
+          fi
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::no digest in the docker push output"; exit 1; }
+          docker push --all-tags "$IMAGE"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
@@ -153,6 +168,14 @@ jobs:
           IMAGE: ${{ steps.name.outputs.image }}
           DIGEST: ${{ steps.push.outputs.digest }}
         run: cosign sign --yes "$IMAGE@$DIGEST"
+
+      - name: Attest build provenance
+        if: env.PUSH == 'true'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ steps.name.outputs.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: false
 
       - name: Summary
         if: always()
@@ -176,6 +199,7 @@ jobs:
     permissions:
       contents: read
       packages: write # add the version tags in GHCR
+      attestations: read # verify the build provenance
     outputs:
       digest: ${{ steps.promote.outputs.digest }}
       image: ${{ steps.name.outputs.image }}
@@ -200,11 +224,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Promote the main build of this commit
+      - name: Find the main build of this commit
         id: promote
         env:
           IMAGE: ${{ steps.name.outputs.image }}
-          TAGS: ${{ steps.meta.outputs.tags }}
         run: |
           # On a tag push GITHUB_SHA is the tagged commit, also for an annotated tag
           # (the tag object SHA is only in github.event.after). main tagged it sha-<commit>.
@@ -219,6 +242,25 @@ jobs:
             echo "::error::No image $source. Merge the commit to main first; a tag never builds."
             exit 1
           fi
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      # The sha-<commit> tag is mutable. Promote only a digest that this workflow built
+      # and attested on main for exactly this commit.
+      - name: Verify build provenance
+        uses: $/actions/verify-provenance
+        with:
+          subject: oci://${{ steps.name.outputs.image }}@${{ steps.promote.outputs.digest }}
+          repo: ${{ github.repository }}
+          source-ref: refs/heads/main
+          source-commit: ${{ github.sha }}
+
+      - name: Add the version tags to the verified digest
+        env:
+          IMAGE: ${{ steps.name.outputs.image }}
+          DIGEST: ${{ steps.promote.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          digest="$DIGEST"
           while IFS= read -r tag; do
             [[ -n "$tag" ]] || continue
             # --prefer-index=false copies the manifest as is, so the digest stays the same.
@@ -226,7 +268,6 @@ jobs:
             got=$(docker buildx imagetools inspect "$tag" --format '{{.Manifest.Digest}}')
             [[ "$got" == "$digest" ]] || { echo "::error::$tag has digest $got, expected $digest"; exit 1; }
           done <<< "$TAGS"
-          echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
       - name: Summary
         if: always()
