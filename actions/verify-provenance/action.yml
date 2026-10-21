@@ -1,0 +1,59 @@
+# Fail unless a subject (an image by digest, or a file) has a GitHub build provenance
+# attestation that the expected workflow signed, for the expected repo, ref and commit.
+# image.yml calls it before it promotes a digest; deploy.yml before it deploys one.
+#
+# Caller job permissions: attestations: read (plus packages: read for a private image).
+name: verify-provenance
+description: Verify the build provenance of an image digest or a file with gh attestation verify.
+
+inputs:
+  subject:
+    description: oci://<image>@sha256:<64 hex>, or a file path.
+    required: true
+  repo:
+    description: Source repository, <owner>/<repo>.
+    required: true
+  signer-workflow:
+    description: Workflow that must have signed, <owner>/<repo>/.github/workflows/<file>.
+    default: VelimirMueller/synthwerk-blueprint/.github/workflows/image.yml
+  source-ref:
+    description: Git ref the build ran on, e.g. refs/heads/main.
+    required: true
+  source-commit:
+    description: Commit the build ran on. Empty = any commit on source-ref.
+    default: ""
+  github-token:
+    description: Token for the attestations API.
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - name: Verify build provenance
+      shell: bash --noprofile --norc -euo pipefail {0}
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        SUBJECT: ${{ inputs.subject }}
+        REPO: ${{ inputs.repo }}
+        SIGNER: ${{ inputs.signer-workflow }}
+        SOURCE_REF: ${{ inputs.source-ref }}
+        SOURCE_COMMIT: ${{ inputs.source-commit }}
+      run: |
+        fail() { echo "::error title=provenance::$1"; exit 1; }
+        if [[ "$SUBJECT" == oci://* ]]; then
+          [[ "$SUBJECT" =~ ^oci://[a-z0-9][a-z0-9._:/-]*@sha256:[0-9a-f]{64}$ ]] ||
+            fail "subject must be oci://<image>@sha256:<64 hex>, got '$SUBJECT'"
+        else
+          [[ -f "$SUBJECT" ]] || fail "subject file '$SUBJECT' does not exist"
+        fi
+        [[ "$REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || fail "repo must be <owner>/<repo>"
+        [[ -n "$SOURCE_REF" ]] || fail "source-ref must not be empty"
+        args=(--repo "$REPO" --signer-workflow "$SIGNER" --source-ref "$SOURCE_REF" --deny-self-hosted-runners)
+        if [[ -n "$SOURCE_COMMIT" ]]; then
+          [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || fail "source-commit must be a 40-hex commit"
+          args+=(--source-digest "$SOURCE_COMMIT")
+        fi
+        echo "verify $SUBJECT: repo=$REPO signer=$SIGNER ref=$SOURCE_REF commit=${SOURCE_COMMIT:-any}"
+        if ! gh attestation verify "$SUBJECT" "${args[@]}"; then
+          fail "$SUBJECT has no build provenance from $SIGNER for $REPO $SOURCE_REF ${SOURCE_COMMIT:-}. Not promoted or deployed."
+        fi

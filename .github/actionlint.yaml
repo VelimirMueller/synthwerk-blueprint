@@ -1,0 +1,6 @@
+# actionlint 1.7.12 does not know GitHub's self-repository syntax (uses: $/<path>,
+# GitHub changelog 2026-07-30) yet. Ignore only that one message.
+paths:
+  .github/workflows/**/*.yml:
+    ignore:
+      - 'specifying action "\$/[^"]+" in invalid format because ref is missing'

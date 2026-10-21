@@ -1,0 +1,39 @@
+# Caller example: deploy a digest that was built before. Copy to .github/workflows/redeploy.yml.
+# Rollback = run this with the previous digest (Actions tab, "Run workflow").
+# It never builds. The digest must exist in ghcr.io; see deploy.log or
+# compose.digest.prev.yaml on the host, or the image summary of an earlier run.
+name: redeploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [dev, stg, prd]
+      digest:
+        description: Image digest, sha256:<64 hex>
+        type: string
+        required: true
+
+permissions: {}
+
+jobs:
+  deploy:
+    # The digest must still carry build provenance from a main build of this repo.
+    permissions:
+      contents: read
+      attestations: read
+      packages: read
+    uses: VelimirMueller/synthwerk-blueprint/.github/workflows/deploy.yml@v1
+    with:
+      environment: ${{ inputs.environment }}
+      image: ghcr.io/<owner>/<repo>
+      digest: ${{ inputs.digest }}
+      service: <service>
+      compose-dir: /opt/synthwerk/<service>
+    secrets:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
