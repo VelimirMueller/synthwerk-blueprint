@@ -26,7 +26,21 @@
 | `GET /healthz` | 200 | `{"status":"ok"}` | Liveness. No dependency checks. Answers in < 10 ms. |
 | `GET /readyz` | 200 when `ok` or `degraded`, 503 when `down` | `{"status","version","commit","checks":[{"name","status","latency_ms","detail"}]}` | Readiness. Answers in < 1 s. Pulse times out at 3 s. |
 
-- `status` and each `checks[].status` take one value: `ok`, `degraded` or `down`.
+- `status` and each `checks[].status` take one value: `ok`, `degraded` or `down`. On `/healthz`, `status` is always `ok`.
+- Both `/readyz` answers (200 and 503) use the same body.
+
+| `/readyz` field | Required | Rule |
+|---|---|---|
+| `status` | yes | `ok`, `degraded` or `down` |
+| `version` | yes | String, max 64 characters |
+| `commit` | yes | Git SHA, `^[0-9a-f]{7,40}$` |
+| `checks` | yes | Array, max 32 items |
+| `checks[].name` | yes | `^[a-z][a-z0-9_-]*$`, max 64 characters |
+| `checks[].status` | yes | `ok`, `degraded` or `down` |
+| `checks[].latency_ms` | yes | Integer, 0 to 60000 |
+| `checks[].detail` | no | Max 256 characters |
+
+- Every object has `additionalProperties: false`. An extra field breaks the contract.
 - The overall `status` is the worst check status.
 - One check per dependency the service needs to serve traffic (for example `model`, `postgres`, `nats`).
 - Each check has its own timeout. The sum stays below 1 s.
@@ -35,7 +49,7 @@
 - Both endpoints need no auth. They are on the Spectral allow-list in `synthwerk-contracts`.
 - No other health path. A service that has `/health` removes it.
 - The image `HEALTHCHECK` calls `/healthz`. The deploy smoke test calls `/readyz`.
-- The shape must match `openapi/_shared/health.yaml` in [synthwerk-contracts](https://github.com/VelimirMueller/synthwerk-contracts) ([synthwerk#23](https://github.com/VelimirMueller/synthwerk/issues/23)). If they differ, the contract wins: change this page.
+- The shape is defined in `openapi/_shared/health.yaml` in [synthwerk-contracts](https://github.com/VelimirMueller/synthwerk-contracts) ([synthwerk#23](https://github.com/VelimirMueller/synthwerk/issues/23)). If they differ, the contract wins: change this page.
 
 ## 3. Environment variables
 
