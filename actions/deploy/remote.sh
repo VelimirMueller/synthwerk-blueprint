@@ -44,13 +44,13 @@ case "$mode" in
   deploy)
     # Pull first: a digest that does not exist fails here and changes nothing.
     docker pull --quiet "$ref"
-    [[ -f compose.digest.yaml ]] && cp compose.digest.yaml compose.digest.prev.yaml
+    if [[ -f compose.digest.yaml ]]; then cp compose.digest.yaml compose.digest.prev.yaml; fi
     printf 'services:\n  %s:\n    image: %s\n' "$service" "$ref" > compose.digest.yaml.tmp
     mv compose.digest.yaml.tmp compose.digest.yaml
     if ! "${compose[@]}" up --detach --no-deps --no-build --pull never --wait --wait-timeout "$timeout" "$service" ||
       ! verify; then
       # Keep the pin on the last good digest, so a manual `up` does not start the bad one.
-      [[ -f compose.digest.prev.yaml ]] && cp compose.digest.prev.yaml compose.digest.yaml
+      if [[ -f compose.digest.prev.yaml ]]; then cp compose.digest.prev.yaml compose.digest.yaml; fi
       echo "::error::deploy of $ref failed; compose.digest.yaml points to the previous digest again"
       exit 1
     fi
