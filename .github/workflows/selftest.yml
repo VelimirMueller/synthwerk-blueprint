@@ -51,6 +51,21 @@ jobs:
       - run: just lint
       - run: just test
 
+  # Shell scripts: bash syntax check and shellcheck (warning and above).
+  shell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: bash -n (*.sh)
+        run: git ls-files -z '*.sh' | xargs -0 -r -n1 bash -n
+      - name: shellcheck --severity=warning (*.sh)
+        run: git ls-files -z '*.sh' | xargs -0 -r shellcheck --severity=warning
+
   # actions/deploy against a throwaway target on this runner: a local registry,
   # an sshd and a compose project. Proves: the running digest equals the deployed
   # digest, a promote and a rollback swap it, and a wrong or missing digest fails.
