@@ -1,0 +1,33 @@
+# fleet.yml: tier and visibility of this repo (STANDARD.md). Exceptions: docs/rollout.md.
+# The reusable workflows in .github/workflows (deploy, feature-doc, go-ci, image, py-ci,
+# ts-ci) keep their names and inputs: synthwerk-* callers pin them by path at @v1. They
+# break rules that allow no exception (WF-FILE-03, WF-NAME-04, WF-ORDER-03/04, WF-TOP-02);
+# see the rollout PR.
+tier: library
+visibility: public
+exceptions:
+  - rule: WF-FILE-02
+    value: [deploy.yml, feature-doc.yml, go-ci.yml, image.yml, py-ci.yml, ts-ci.yml]
+    reason: These files are the reusable workflows this repo publishes, and synthwerk-* callers pin them by path, so they keep their names.
+  - rule: WF-NAME-02
+    value:
+      ci.yml: [toolchains, shell, deploy-selftest, provenance]
+      deploy.yml: [deploy]
+    reason: The Go and Python config tests, shellcheck and the selftests of actions/deploy and actions/verify-provenance have no fleet stage, and the reusable deploy.yml keeps its job id.
+  - rule: GOV-RS-02
+    value: no develop branch
+    reason: The repo is trunk-only on main until the control repo creates develop (fleet-standard#7).
+  - rule: GOV-RS-04
+    value: no ruleset on main
+    reason: The repo has no ruleset yet; the control repo creates the main ruleset when is_enforced flips (fleet-standard#7).
+  - rule: GOV-ENV-10
+    value: no release environment
+    reason: "@synthwerk/biome-config is not published to npm yet, and the workflow releases are git tags (v1.x, moving v1)."
+  - rule: CI-COST-07
+    value: 35
+    reason: The promote job of the reusable image.yml polls up to 25 minutes for the main build of the same commit, so its job timeout is 35, and the @v1 callers rely on it.
+    expires: 2027-04-30
+  - rule: CI-COST-14
+    value: [actions/setup-node, actions/setup-python]
+    reason: The reusable go-ci.yml relies on the setup-go default (cache on) without an explicit cache key, and it stays unchanged for the @v1 callers.
+    expires: 2027-04-30
