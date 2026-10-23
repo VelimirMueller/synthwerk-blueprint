@@ -278,6 +278,8 @@ jobs:
           WANT: ${{ env.SELFTEST_IMAGE }}@${{ env.SELFTEST_DIGEST_A }}
         run: tests/deploy/assert-running.sh "$WANT"
 
+      # Only failure is a pass here: success means the action accepted a wrong or missing
+      # digest (a regression); skipped or cancelled means the case never ran.
       - name: Check that the failure cases failed
         env:
           WRONG: ${{ steps.wrong.outcome }}
