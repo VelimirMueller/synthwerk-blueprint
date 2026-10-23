@@ -203,7 +203,7 @@ just test   # node --test: Biome, golangci-lint, ruff, mypy configs and the feat
 </p>
 
 <p align="center">
-<a href="https://github.com/VelimirMueller/synthwerk-blueprint/actions/workflows/ci.yml"><picture><source media="(prefers-color-scheme: light)" srcset="assets/readme/links-4-v2-light.svg"><img alt="Selftest (https://github.com/VelimirMueller/synthwerk-blueprint/actions/workflows/selftest.yml)" src="assets/readme/links-4-v2-dark.svg" width="32%"></picture></a>
+<a href="https://github.com/VelimirMueller/synthwerk-blueprint/actions/workflows/ci.yml"><picture><source media="(prefers-color-scheme: light)" srcset="assets/readme/links-4-v2-light.svg"><img alt="CI (https://github.com/VelimirMueller/synthwerk-blueprint/actions/workflows/ci.yml)" src="assets/readme/links-4-v2-dark.svg" width="32%"></picture></a>
 <a href="CHANGELOG.md"><picture><source media="(prefers-color-scheme: light)" srcset="assets/readme/links-5-v2-light.svg"><img alt="Changelog (CHANGELOG.md)" src="assets/readme/links-5-v2-dark.svg" width="32%"></picture></a>
 <a href="LICENSE"><picture><source media="(prefers-color-scheme: light)" srcset="assets/readme/links-6-v2-light.svg"><img alt="License (LICENSE)" src="assets/readme/links-6-v2-dark.svg" width="32%"></picture></a>
 </p>

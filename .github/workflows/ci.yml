@@ -377,6 +377,8 @@ jobs:
           echo "signer: $SIGNER, foreign: $FOREIGN, commit: $COMMIT, ref: $REF"
           [[ "$SIGNER" == failure && "$FOREIGN" == failure && "$COMMIT" == failure && "$REF" == failure ]]
 
+  # Any failed or cancelled job fails this check. A draft PR skips changes and every job
+  # after it (CI-COST-16); ready_for_review starts a full run before the merge.
   conclusion:
     needs: [changes, lint, unit, e2e, build, toolchains, shell, deploy-selftest, provenance]
     if: always()
