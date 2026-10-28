@@ -1,4 +1,4 @@
-# Tasks for the blueprint repo itself. CI runs `just lint` and `just test`.
+# Tasks for the blueprint repo itself. CI (.github/workflows/ci.yml) runs the same checks.
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
 zizmor_version := "1.30.1"

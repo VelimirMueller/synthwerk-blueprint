@@ -3,6 +3,20 @@
 All notable changes to this project are documented here. Releases are tagged
 `v<version>`; the moving `v1` tag follows minor and patch releases.
 
+## Unreleased
+
+### Changed
+
+- The repo's own CI moves from `selftest.yml` to `ci.yml` on the fleet standard
+  (fleet-workflows `v0.0.2`, fleet-standard#10). It runs on pull requests and by
+  hand only, no longer on push to `main`. Required check context: `conclusion`.
+  The reusable workflows and their inputs do not change.
+- `fleet.yml` declares the workflow publisher role (fleet-standard WF-PUB-01/02): the
+  reusable workflows keep their names and job ids for the `@v1` callers, and the
+  `deploy-selftest` and `provenance` jobs count as selftests, not deploy jobs.
+- The reusable workflows get step names and the fleet key order. Inputs, outputs, job
+  ids and behaviour do not change; step names show in the callers' run logs.
+
 ## 1.1.0 - 2026-10-21
 
 ### Changed (callers must act)
