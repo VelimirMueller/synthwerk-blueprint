@@ -8,7 +8,7 @@ All notable changes to this project are documented here. Releases are tagged
 ### Changed
 
 - The repo's own CI moves from `selftest.yml` to `ci.yml` on the fleet standard
-  (fleet-workflows `v0.0.1`, fleet-standard#10). It runs on pull requests and by
+  (fleet-workflows `v0.0.2`, fleet-standard#10). It runs on pull requests and by
   hand only, no longer on push to `main`. Required check context: `conclusion`.
   The reusable workflows and their inputs do not change.
 
