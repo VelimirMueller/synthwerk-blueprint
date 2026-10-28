@@ -171,6 +171,8 @@ jobs:
   # an sshd and a compose project. Proves: the running digest equals the deployed
   # digest, a promote and a rollback swap it, and a wrong or missing digest fails.
   # Nothing leaves the runner: no secret, no environment, no remote host.
+  # `$/` is GitHub's self-repository syntax: the action at this workflow's own repo and ref
+  # (CI runs it green); `./` would need the checkout to sit at the same commit.
   deploy-selftest:
     needs: changes
     if: ${{ !failure() && !cancelled() && needs.changes.outputs.code == 'true' }}
@@ -294,7 +296,7 @@ jobs:
   # actions/verify-provenance, the gate before a promote or a deploy. This job attests
   # one file itself, then checks: that file with this job's identity passes; a subject
   # without an attestation, a subject not signed by image.yml, and a wrong commit or
-  # ref fail.
+  # ref fail. `$/actions/...` is the self-repository syntax (see deploy-selftest).
   provenance:
     needs: changes
     if: ${{ !failure() && !cancelled() && needs.changes.outputs.code == 'true' }}
