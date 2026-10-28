@@ -59,7 +59,7 @@ jobs:
     if: ${{ !failure() && !cancelled() && needs.changes.outputs.code == 'true' }}
     permissions:
       contents: read
-    uses: VelimirMueller/fleet-workflows/.github/workflows/_ci-lint.yml@v0.0.1
+    uses: VelimirMueller/fleet-workflows/.github/workflows/_ci-lint.yml@v0.0.2
     with:
       stack: node
 
@@ -70,7 +70,7 @@ jobs:
     if: ${{ !failure() && !cancelled() && needs.changes.outputs.code == 'true' }}
     permissions:
       contents: read
-    uses: VelimirMueller/fleet-workflows/.github/workflows/_ci-unit.yml@v0.0.1
+    uses: VelimirMueller/fleet-workflows/.github/workflows/_ci-unit.yml@v0.0.2
     with:
       stack: node
       command: >-
@@ -85,7 +85,7 @@ jobs:
     if: ${{ !failure() && !cancelled() && github.event_name == 'workflow_dispatch' && inputs.e2e }}
     permissions:
       contents: read
-    uses: VelimirMueller/fleet-workflows/.github/workflows/_ci-e2e.yml@v0.0.1
+    uses: VelimirMueller/fleet-workflows/.github/workflows/_ci-e2e.yml@v0.0.2
     with:
       stack: node
 
@@ -95,7 +95,7 @@ jobs:
     if: ${{ !failure() && !cancelled() && needs.changes.outputs.code == 'true' }}
     permissions:
       contents: read
-    uses: VelimirMueller/fleet-workflows/.github/workflows/_ci-build.yml@v0.0.1
+    uses: VelimirMueller/fleet-workflows/.github/workflows/_ci-build.yml@v0.0.2
     with:
       stack: node
       command: >-
