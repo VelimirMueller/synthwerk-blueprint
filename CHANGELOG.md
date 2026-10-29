@@ -17,6 +17,18 @@ All notable changes to this project are documented here. Releases are tagged
 - The reusable workflows get step names and the fleet key order. Inputs, outputs, job
   ids and behaviour do not change; step names show in the callers' run logs.
 
+### Added
+
+- `ci.yml` calls `ts-ci.yml`, `py-ci.yml` and `go-ci.yml` with `uses: ./` on fixture
+  projects in `tests/fixtures/ci` (jobs `ts-ci-selftest`, `py-ci-selftest`,
+  `go-ci-selftest`). A broken input default, path or job now fails the PR, not the
+  callers after the next `v1` move (#7).
+- `image-selftest.yml` runs `image.yml` on a fixture image (build, SBOM, Trivy) by hand.
+  It needs `id-token: write`, so the fleet standard counts it as a deploy job, which
+  never runs on a pull request. Run it before a `v1` move that changes `image.yml`.
+- `tests/ts-ci-ban.test.mjs` runs the v-html ban step of `ts-ci.yml`: a fixture with
+  `v-html` must fail it, a clean one must pass.
+
 ### Fixed
 
 - Feature-doc checker: a doc with CRLF line ends parses. Before, it gave "no

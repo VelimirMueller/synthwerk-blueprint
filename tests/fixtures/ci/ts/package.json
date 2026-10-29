@@ -1,0 +1,15 @@
+{
+  "name": "ts-ci-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.10.1",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  }
+}

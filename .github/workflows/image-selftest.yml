@@ -1,0 +1,36 @@
+# Selftest of the reusable image.yml on the fixture tests/fixtures/ci/image: build, SBOM
+# and Trivy scan. It pushes, signs and attests nothing: image.yml does that only on a push
+# to main or a v* tag, and this workflow starts only by hand. Run it before a v1 move
+# that changes image.yml: gh workflow run image-selftest.yml --ref <branch>.
+# Why a separate, manual workflow: GitHub checks a caller's permissions at start, so the
+# caller job must grant what image.yml declares (packages, id-token, attestations: write).
+# id-token: write makes it a deploy job (fleet CI-COST-01, CI-COST-02, CI-COST-06), and a
+# deploy job never runs on pull_request; ci.yml covers ts-ci, py-ci and go-ci on every PR.
+name: image-selftest
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: image-selftest-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  image-selftest:
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      packages: write # declared by image.yml; unused, nothing is pushed
+      id-token: write # declared by image.yml; unused, nothing is signed
+      attestations: write # declared by image.yml; unused, nothing is attested
+    uses: ./.github/workflows/image.yml # zizmor: ignore[self-repository]
+    with:
+      image-name: ${{ github.repository }}-selftest
+      context: tests/fixtures/ci/image
+      file: tests/fixtures/ci/image/Dockerfile
