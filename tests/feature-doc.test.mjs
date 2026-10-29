@@ -111,6 +111,53 @@ describe('feature-doc helpers', () => {
     )
   })
 
+  it('parseFrontmatter - block list items at column 0 - parses values', () => {
+    const meta = parseFrontmatter('---\npaths:\n- src/**\n- "app/*.vue"\nstatus: beta\n---\n')
+    assert.deepEqual(meta, { paths: ['src/**', 'app/*.vue'], status: 'beta' })
+  })
+
+  it('parseFrontmatter - CRLF line ends - parses values without CR', () => {
+    const text =
+      '---\ntitle: T\nslug: x\nstatus: beta\nupdated: 2026-10-09\npaths:\n  - src/**\n---\n'
+    const meta = parseFrontmatter(text.replaceAll('\n', '\r\n'))
+    assert.deepEqual(meta, {
+      title: 'T',
+      slug: 'x',
+      status: 'beta',
+      updated: '2026-10-09',
+      paths: ['src/**']
+    })
+    assert.deepEqual(lintFrontmatter('docs/features/x.md', meta), [])
+  })
+
+  it('loadDocs - CRLF doc with unindented list - lints clean and covers its paths', () => {
+    const root = mkdtempSync(join(tmpdir(), 'feature-doc-crlf-'))
+    try {
+      cpSync(fixture, root, { recursive: true })
+      const text = [
+        '---',
+        'title: Widget session token',
+        'slug: widget-session-token',
+        'status: stable',
+        'paths:',
+        '- internal/widgettoken/**',
+        'updated: 2026-10-09',
+        '---',
+        '',
+        '# Widget session token',
+        ''
+      ].join('\r\n')
+      writeFileSync(join(root, DOC), text)
+      const crlfDocs = loadDocs(root)
+      assert.deepEqual(check({ changed: [SRC, DOC], docs: crlfDocs }).errors, [])
+      assert.deepEqual(check({ changed: [SRC], docs: crlfDocs }).errors, [
+        `${DOC}: not updated, but ${SRC} changed. Run /feature-doc.`
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   it('steWarnings - code, tables and headings - are skipped', () => {
     const text = `# ${'w '.repeat(30)}\n| ${'w '.repeat(30)} |\n\`\`\`\n${'w '.repeat(30)}\n\`\`\`\n`
     assert.deepEqual(steWarnings('f.md', text), [])
