@@ -64,16 +64,22 @@ function parseValue(raw) {
   return value.replace(/\s+#.*$/, '')
 }
 
-/** Parses the YAML subset used by feature docs: scalars, flow arrays, block lists. */
+/** Splits text into lines. CRLF and CR line ends count as LF. */
+const splitLines = (text) => text.split(/\r\n?|\n/)
+
+/**
+ * Parses the YAML subset used by feature docs: scalars, flow arrays, block lists.
+ * Block list items may sit at column 0 (`paths:\n- src/**`), as YAML allows.
+ */
 export function parseFrontmatter(text) {
-  const lines = text.split('\n')
+  const lines = splitLines(text)
   if (lines[0].trim() !== '---') return null
-  const end = lines.indexOf('---', 1)
+  const end = lines.findIndex((line, i) => i > 0 && line.trimEnd() === '---')
   if (end === -1) return null
   const data = {}
   let listKey = null
   for (const line of lines.slice(1, end)) {
-    const item = line.match(/^\s+-\s+(.*)$/)
+    const item = line.match(/^\s*-\s+(.*)$/)
     if (item && listKey) {
       data[listKey].push(parseValue(item[1]))
       continue
@@ -118,7 +124,7 @@ export function steWarnings(file, text) {
   const warnings = []
   let inFence = false
   let inFrontmatter = text.startsWith('---')
-  text.split('\n').forEach((line, i) => {
+  splitLines(text).forEach((line, i) => {
     if (inFrontmatter) {
       if (i > 0 && line.trim() === '---') inFrontmatter = false
       return

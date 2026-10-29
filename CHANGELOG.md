@@ -17,6 +17,13 @@ All notable changes to this project are documented here. Releases are tagged
 - The reusable workflows get step names and the fleet key order. Inputs, outputs, job
   ids and behaviour do not change; step names show in the callers' run logs.
 
+### Fixed
+
+- Feature-doc checker: a doc with CRLF line ends parses. Before, it gave "no
+  frontmatter", and values kept the `\r` (`status: beta` failed). Block list items
+  at column 0 (`paths:` then `- src/**`) parse too (#6).
+- `.gitattributes` keeps `docs/features/*.md` at LF line ends.
+
 ## 1.1.0 - 2026-10-21
 
 ### Changed (callers must act)
