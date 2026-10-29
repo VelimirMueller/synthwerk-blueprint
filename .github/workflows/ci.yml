@@ -63,7 +63,8 @@ jobs:
     with:
       stack: node
 
-  # The node-only tests: the feature-doc checker and the Biome config. The runner enforces
+  # The node-only tests: the feature-doc checker, the Biome config and the v-html ban step
+  # of ts-ci.yml (a fixture with v-html must fail it). The runner enforces
   # the floor (CI-UNIT-02) and writes coverage/lcov.info for the stage check.
   unit:
     needs: [changes, lint]
@@ -78,7 +79,7 @@ jobs:
         --test-coverage-lines=80 --test-coverage-branches=70
         --test-reporter=spec --test-reporter-destination=stdout
         --test-reporter=lcov --test-reporter-destination=coverage/lcov.info
-        tests/feature-doc.test.mjs tests/biome-config.test.mjs
+        tests/feature-doc.test.mjs tests/biome-config.test.mjs tests/ts-ci-ban.test.mjs
 
   e2e:
     needs: [changes, unit]
@@ -381,10 +382,56 @@ jobs:
           echo "signer: $SIGNER, foreign: $FOREIGN, commit: $COMMIT, ref: $REF"
           [[ "$SIGNER" == failure && "$FOREIGN" == failure && "$COMMIT" == failure && "$REF" == failure ]]
 
+  # Selftests of the published reusable workflows: each one runs at the caller's own commit
+  # (not @v1) on a small fixture project in tests/fixtures/ci. A broken input default, path
+  # or job fails here before the next v1 move. For a workflow, `./` already means the
+  # caller's commit (no checkout needed), and actionlint checks the inputs against the
+  # local file; so `./` stays and zizmor's self-repository hint is ignored.
+  # image.yml asks for id-token: write, which makes its caller a deploy job (fleet
+  # CI-COST-01): image-selftest.yml runs it by hand.
+  ts-ci-selftest:
+    needs: changes
+    if: ${{ !failure() && !cancelled() && needs.changes.outputs.code == 'true' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ts-ci.yml # zizmor: ignore[self-repository]
+    with:
+      working-directory: tests/fixtures/ci/ts
+
+  py-ci-selftest:
+    needs: changes
+    if: ${{ !failure() && !cancelled() && needs.changes.outputs.code == 'true' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/py-ci.yml # zizmor: ignore[self-repository]
+    with:
+      working-directory: tests/fixtures/ci/py
+
+  go-ci-selftest:
+    needs: changes
+    if: ${{ !failure() && !cancelled() && needs.changes.outputs.code == 'true' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/go-ci.yml # zizmor: ignore[self-repository]
+    with:
+      working-directory: tests/fixtures/ci/go
+
   # Any failed or cancelled job fails this check. A draft PR skips changes and every job
   # after it (CI-COST-16); ready_for_review starts a full run before the merge.
   conclusion:
-    needs: [changes, lint, unit, e2e, build, toolchains, shell, deploy-selftest, provenance]
+    needs:
+      - changes
+      - lint
+      - unit
+      - e2e
+      - build
+      - toolchains
+      - shell
+      - deploy-selftest
+      - provenance
+      - ts-ci-selftest
+      - py-ci-selftest
+      - go-ci-selftest
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -401,12 +448,16 @@ jobs:
           SHELL_LINT: ${{ needs.shell.result }}
           DEPLOY_SELFTEST: ${{ needs.deploy-selftest.result }}
           PROVENANCE: ${{ needs.provenance.result }}
+          TS_CI: ${{ needs.ts-ci-selftest.result }}
+          PY_CI: ${{ needs.py-ci-selftest.result }}
+          GO_CI: ${{ needs.go-ci-selftest.result }}
         run: |
           for r in $RESULTS; do
             case "$r" in success|skipped) ;; *) echo "::error::a job ended as $r"; exit 1 ;; esac
           done
           if [ "$CODE" = "true" ]; then
-            for r in "$LINT" "$UNIT" "$BUILD" "$TOOLCHAINS" "$SHELL_LINT" "$DEPLOY_SELFTEST" "$PROVENANCE"; do
+            for r in "$LINT" "$UNIT" "$BUILD" "$TOOLCHAINS" "$SHELL_LINT" "$DEPLOY_SELFTEST" \
+              "$PROVENANCE" "$TS_CI" "$PY_CI" "$GO_CI"; do
               [ "$r" = "success" ] || { echo "::error::a required stage did not run"; exit 1; }
             done
           fi
