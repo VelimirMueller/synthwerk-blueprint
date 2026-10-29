@@ -17,8 +17,10 @@ function stepScript(workflow, stepName) {
   const lines = workflow.split('\n')
   const start = lines.findIndex((line) => line.trim() === stepName)
   assert.notEqual(start, -1, `no step "${stepName}"`)
-  const runAt = lines.findIndex((line, i) => i > start && /^\s+run: \|$/.test(line))
-  assert.notEqual(runAt, -1, `step "${stepName}" has no run block`)
+  const next = lines.findIndex((line, i) => i > start && /^\s+- name: /.test(line))
+  const stepEnd = next === -1 ? lines.length : next
+  const runAt = lines.findIndex((line, i) => i > start && i < stepEnd && /^\s+run: \|$/.test(line))
+  assert.notEqual(runAt, -1, `step "${stepName}" has no "run: |" block`)
   const keyIndent = lines[runAt].search(/\S/)
   const body = []
   for (const line of lines.slice(runAt + 1)) {
